@@ -1,0 +1,13 @@
+RewriteEngine On
+
+# CORS headers
+Header set Access-Control-Allow-Origin "*"
+Header set Access-Control-Allow-Methods "GET, POST, PUT, DELETE, OPTIONS"
+Header set Access-Control-Allow-Headers "Content-Type, Authorization"
+
+# API routing
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/auth/(.*)$ api/auth.php [L,QSA]
+RewriteRule ^api/messages/(.*)$ api/messages.php [L,QSA]
+RewriteRule ^api/stripe-webhook$ api/stripe-webhook.php [L,QSA]
