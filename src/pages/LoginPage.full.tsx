@@ -1,8 +1,8 @@
 /**
- * Signup Page
+ * Login Page (full, fixed version for reference)
  */
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
@@ -12,59 +12,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/components/ui/use-toast';
 import { Sparkles, Loader2 } from 'lucide-react';
 
-export function SignupPage() {
+export function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { signup } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (password !== confirmPassword) {
-      toast({
-        title: 'Passwords do not match',
-        description: 'Please make sure your passwords match.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (password.length < 6) {
-      toast({
-        title: 'Password too short',
-        description: 'Password must be at least 6 characters.',
-        variant: 'destructive',
-      });
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      const success = await signup({ email, password });
+      const success = await login({ email, password });
 
       if (!success) {
         toast({
-          title: 'Signup failed',
-          description: 'Please try again.',
+          title: 'Login failed',
+          description: 'Please check your credentials.',
           variant: 'destructive',
         });
         return;
       }
 
       toast({
-        title: 'Account created!',
-        description: "Welcome to Chat Decoder. Let's set up your profile.",
+        title: 'Welcome back!',
+        description: 'You have successfully logged in.',
       });
-      navigate('/onboarding');
+      navigate('/decoder');
     } catch (error) {
       toast({
-        title: 'Signup failed',
-        description: 'Please try again.',
+        title: 'Login failed',
+        description: 'Please check your credentials.',
         variant: 'destructive',
       });
     } finally {
@@ -80,8 +60,8 @@ export function SignupPage() {
             <div className="w-12 h-12 bg-primary rounded-xl flex items-center justify-center mx-auto mb-4">
               <Sparkles className="h-6 w-6 text-primary-foreground" />
             </div>
-            <CardTitle className="text-2xl">Create Your Account</CardTitle>
-            <CardDescription>Start decoding what your viewers are really saying</CardDescription>
+            <CardTitle className="text-2xl">Welcome Back</CardTitle>
+            <CardDescription>Sign in to your Wassup account</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -99,7 +79,12 @@ export function SignupPage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Password</Label>
+                  <Link to="/forgot-password" className="text-xs text-primary hover:underline">
+                    Forgot password?
+                  </Link>
+                </div>
                 <Input
                   id="password"
                   type="password"
@@ -107,22 +92,6 @@ export function SignupPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={6}
-                  className="h-11"
-                  disabled={isLoading}
-                />
-                <p className="text-xs text-muted-foreground">At least 6 characters</p>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="confirmPassword">Confirm Password</Label>
-                <Input
-                  id="confirmPassword"
-                  type="password"
-                  placeholder="••••••••"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  minLength={6}
                   className="h-11"
                   disabled={isLoading}
                 />
@@ -131,18 +100,18 @@ export function SignupPage() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating account...
+                    Signing in...
                   </>
                 ) : (
-                  'Create Account'
+                  'Sign In'
                 )}
               </Button>
             </form>
 
             <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">Already have an account? </span>
-              <Link to="/login" className="text-primary hover:underline font-medium">
-                Sign in
+              <span className="text-muted-foreground">Don't have an account? </span>
+              <Link to="/signup" className="text-primary hover:underline font-medium">
+                Sign up
               </Link>
             </div>
 
@@ -158,4 +127,4 @@ export function SignupPage() {
   );
 }
 
-export default SignupPage;
+export default LoginPage;
