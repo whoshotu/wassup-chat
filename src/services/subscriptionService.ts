@@ -203,10 +203,14 @@ export const subscriptionService = {
   /**
    * Create Stripe Checkout Session and return redirect URL
    * Uses Supabase Edge Function for secure server-side Stripe integration
+   * Falls back to demo mode if Supabase is not configured
    */
   async getCheckoutUrl(planType: PlanType, userId: string): Promise<string> {
+    // Demo mode when Supabase is not configured
     if (!isSupabaseConfigured) {
-      throw new Error('Supabase is not configured. Please set up your environment variables.');
+      console.warn('Supabase not configured - running in demo mode');
+      // Simulate checkout by returning to pricing page with success param
+      return `${window.location.origin}/pricing?demo=true&plan=${planType}`;
     }
 
     const { data: { session } } = await supabase.auth.getSession();
@@ -242,10 +246,13 @@ export const subscriptionService = {
   /**
    * Create Stripe Billing Portal Session and return redirect URL
    * Uses Supabase Edge Function for secure server-side Stripe integration
+   * Falls back to demo mode if Supabase is not configured
    */
   async getBillingPortalUrl(): Promise<string> {
+    // Demo mode when Supabase is not configured
     if (!isSupabaseConfigured) {
-      throw new Error('Supabase is not configured. Please set up your environment variables.');
+      console.warn('Supabase not configured - running in demo mode');
+      return `${window.location.origin}/settings?demo=true`;
     }
 
     const { data: { session } } = await supabase.auth.getSession();
