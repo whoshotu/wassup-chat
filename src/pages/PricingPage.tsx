@@ -12,6 +12,7 @@ import { ThemeToggle } from '@/components/layout/ThemeToggle';
 import { useSubscription, PLANS } from '@/contexts/SubscriptionContext';
 import { useAuth } from '@/hooks/useAuth';
 import { subscriptionService } from '@/services/subscriptionService';
+import { useToast } from '@/components/ui/use-toast';
 import { Check, Sparkles, Crown, ArrowLeft, Zap, X } from 'lucide-react';
 import type { PlanType } from '@/types';
 
@@ -19,6 +20,7 @@ export function PricingPage() {
   const { subscription, isPro, updateSubscription } = useSubscription();
   const { isAuthenticated, user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [loadingPlan, setLoadingPlan] = useState<PlanType | null>(null);
 
   const handleSelectPlan = async (planType: PlanType) => {
@@ -47,6 +49,11 @@ export function PricingPage() {
       window.location.href = checkoutUrl;
     } catch (error) {
       console.error('Checkout error:', error);
+      toast({
+        title: 'Checkout Error',
+        description: error instanceof Error ? error.message : 'Failed to start checkout. Please try again.',
+        variant: 'destructive',
+      });
       setLoadingPlan(null);
     }
   };

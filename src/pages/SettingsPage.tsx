@@ -22,6 +22,7 @@ export function SettingsPage() {
   const { subscription, isPro } = useSubscription();
   const [primaryLanguage, setPrimaryLanguage] = useState(user?.primaryLanguage || 'English');
   const [viewerRegions, setViewerRegions] = useState<string[]>(user?.commonRegions || []);
+  const [billingLoading, setBillingLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -56,6 +57,22 @@ export function SettingsPage() {
 
   const planDetails = PLANS[subscription.planType];
   const renewalText = subscriptionService.formatRenewalText(subscription);
+
+  const handleManageBilling = async () => {
+    setBillingLoading(true);
+    try {
+      const portalUrl = await subscriptionService.getBillingPortalUrl();
+      window.location.href = portalUrl;
+    } catch (error) {
+      console.error('Billing portal error:', error);
+      toast({
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to open billing portal',
+        variant: 'destructive',
+      });
+      setBillingLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background pb-20">
@@ -119,8 +136,14 @@ export function SettingsPage() {
           
           <div className="mt-4 pt-4 border-t border-border">
             {isPro ? (
-              <Button variant="outline" className="w-full" size="sm">
-                Manage Billing
+              <Button 
+                variant="outline" 
+                className="w-full" 
+                size="sm"
+                onClick={handleManageBilling}
+                disabled={billingLoading}
+              >
+                {billingLoading ? 'Loading...' : 'Manage Billing'}
               </Button>
             ) : (
               <Link to="/pricing">

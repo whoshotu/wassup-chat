@@ -4,6 +4,7 @@
  */
 
 import type { PlanType, Subscription, UserProfile } from '@/types';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
 
 // Plan configuration
 export const PLANS = {
@@ -200,53 +201,81 @@ export const subscriptionService = {
   },
 
   /**
-   * Get Stripe checkout URL
-   * Creates a Stripe checkout session
+   * Create Stripe Checkout Session and return redirect URL
+   * Uses Supabase Edge Function for secure server-side Stripe integration
    */
   async getCheckoutUrl(planType: PlanType, userId: string): Promise<string> {
-    const response = await fetch('/api/create-checkout-session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        planType,
-        userId,
-        successUrl: `${window.location.origin}/decoder?checkout=success`,
-        cancelUrl: `${window.location.origin}/pricing?checkout=cancelled`,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to create checkout session');
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase is not configured. Please set up your environment variables.');
     }
 
-    const { url } = await response.json();
-    return url;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('You must be logged in to subscribe');
+    }
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ planType }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create checkout session');
+    }
+
+    const data = await response.json();
+    if (!data.url) {
+      throw new Error('Checkout URL not returned from API');
+    }
+
+    return data.url as string;
   },
 
   /**
-   * Get Stripe billing portal URL
-   * Creates a Stripe billing portal session
+   * Create Stripe Billing Portal Session and return redirect URL
+   * Uses Supabase Edge Function for secure server-side Stripe integration
    */
-  async getBillingPortalUrl(customerId: string): Promise<string> {
-    const response = await fetch('/api/create-portal-session', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        customerId,
-        returnUrl: `${window.location.origin}/settings`,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to create billing portal session');
+  async getBillingPortalUrl(): Promise<string> {
+    if (!isSupabaseConfigured) {
+      throw new Error('Supabase is not configured. Please set up your environment variables.');
     }
 
-    const { url } = await response.json();
-    return url;
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('You must be logged in to manage your subscription');
+    }
+
+    const response = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-portal`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({}),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.error || 'Failed to create billing portal session');
+    }
+
+    const data = await response.json();
+    if (!data.url) {
+      throw new Error('Billing portal URL not returned from API');
+    }
+
+    return data.url as string;
   },
 
   /**

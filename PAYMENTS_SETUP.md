@@ -82,10 +82,11 @@ supabase db push
 
 ### 2. Deploy Edge Functions
 
-Deploy the Stripe webhook handler:
+Deploy all Stripe-related edge functions:
 ```bash
 supabase functions deploy stripe-webhook
 supabase functions deploy create-checkout
+supabase functions deploy create-portal
 ```
 
 ### 3. Set Edge Function Secrets
