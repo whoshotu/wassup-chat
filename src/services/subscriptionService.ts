@@ -221,7 +221,7 @@ export const subscriptionService = {
     }
 
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-checkout`,
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/supabase-functions-create-checkout`,
       {
         method: 'POST',
         headers: {
@@ -263,7 +263,7 @@ export const subscriptionService = {
     }
 
     const response = await fetch(
-      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-portal`,
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/supabase-functions-create-portal`,
       {
         method: 'POST',
         headers: {

@@ -94,7 +94,7 @@ export function HistoryPage() {
                       <Globe className="h-3 w-3 flex-shrink-0" />
                       <span>{message.detectedLanguage}</span>
                       <span>•</span>
-                      <span>{format(new Date(message.timestamp), 'MMM d')}</span>
+                      <span>{format(new Date(message.createdAt), 'MMM d')}</span>
                     </div>
                     <p className="text-sm font-medium mb-3 line-clamp-2">
                       {message.originalText}
