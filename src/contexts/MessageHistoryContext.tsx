@@ -2,8 +2,12 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 export interface SlangItem {
   term: string;
-  definition: string;
-  context: string;
+  meaning?: string;
+  definition?: string;
+  context?: string;
+  region?: string;
+  notes?: string;
+  formalityLevel?: 'casual' | 'informal' | 'vulgar' | 'neutral';
 }
 
 export interface DecodedMessage {
@@ -11,16 +15,18 @@ export interface DecodedMessage {
   originalText: string;
   detectedLanguage: string;
   region: string;
+  translation: string;
   plainExplanation: string;
   slangItems: SlangItem[];
   toneTags: string[];
-  timestamp: number;
+  suggestedResponses: string[];
+  createdAt: string;
   isFavorite: boolean;
 }
 
 interface MessageHistoryContextType {
   messages: DecodedMessage[];
-  addMessage: (message: Omit<DecodedMessage, 'id' | 'timestamp' | 'isFavorite'>) => void;
+  addMessage: (message: Omit<DecodedMessage, 'id' | 'createdAt' | 'isFavorite'>) => void;
   toggleFavorite: (id: string) => void;
   searchMessages: (query: string) => DecodedMessage[];
   getFavorites: () => DecodedMessage[];

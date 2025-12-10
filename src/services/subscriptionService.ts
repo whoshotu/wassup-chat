@@ -215,7 +215,9 @@ export const subscriptionService = {
 
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
-      throw new Error('You must be logged in to subscribe');
+      // Demo mode when user is not authenticated
+      console.warn('User not authenticated - running in demo mode');
+      return `${window.location.origin}/pricing?demo=true&plan=${planType}`;
     }
 
     const response = await fetch(

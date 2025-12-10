@@ -36,9 +36,11 @@ export interface UserProfile {
 export interface SlangItem {
   term: string;
   meaning: string;
-  region: string;
+  definition?: string;
+  context?: string;
+  region?: string;
   notes?: string;
-  formalityLevel: 'casual' | 'informal' | 'vulgar' | 'neutral';
+  formalityLevel?: 'casual' | 'informal' | 'vulgar' | 'neutral';
 }
 
 // Tone tag types
@@ -64,9 +66,11 @@ export interface DecodedMessage {
   originalText: string;
   detectedLanguage: string;
   region: string;
+  translation: string;
   plainExplanation: string;
   slangItems: SlangItem[];
   toneTags: ToneType[];
+  suggestedResponses: string[];
   createdAt: string;
   favorited: boolean;
 }
@@ -84,9 +88,11 @@ export interface DecodeResponse {
   originalText: string;
   detectedLanguage: string;
   region: string;
+  translation: string;
   plainExplanation: string;
   slangItems: SlangItem[];
   toneTags: ToneType[];
+  suggestedResponses: string[];
   createdAt: string;
 }
 

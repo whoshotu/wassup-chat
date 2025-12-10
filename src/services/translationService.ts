@@ -4,9 +4,11 @@ import { SlangItem } from '@/contexts/MessageHistoryContext';
 export interface TranslationResult {
   detectedLanguage: string;
   region: string;
+  translation: string;
   plainExplanation: string;
   slangItems: SlangItem[];
   toneTags: string[];
+  suggestedResponses: string[];
 }
 
 // Translation service interface - can be implemented by different providers
@@ -251,14 +253,41 @@ class MockTranslationProvider implements TranslationProvider {
     const toneTags = detectTone(text);
     const slangItems = detectSlang(text, language);
     const plainExplanation = generateExplanation(text, language, toneTags);
+    const translation = language !== 'English' ? text : text; // Placeholder for actual translation
+    const suggestedResponses = this.generateSuggestedResponses(toneTags);
 
     return {
       detectedLanguage: language,
       region,
+      translation,
       plainExplanation,
       slangItems,
       toneTags,
+      suggestedResponses,
     };
+  }
+
+  private generateSuggestedResponses(tones: string[]): string[] {
+    const responses: string[] = [];
+    
+    if (tones.includes('sexual')) {
+      responses.push('Set a boundary: "Let\'s keep it fun and friendly 😊"');
+      responses.push('Redirect: "Thanks! Check out my tip menu 💕"');
+    } else if (tones.includes('rude') || tones.includes('insult')) {
+      responses.push('Ignore the message');
+      responses.push('Set a boundary: "Please be respectful"');
+    } else if (tones.includes('compliment')) {
+      responses.push('Thank them: "Aww thank you! 💕"');
+      responses.push('Engage: "Thanks! How are you?"');
+    } else if (tones.includes('question')) {
+      responses.push('Answer directly if comfortable');
+      responses.push('Redirect to tip menu/rules');
+    } else {
+      responses.push('Acknowledge with a smile');
+      responses.push('Keep the conversation going');
+    }
+    
+    return responses.slice(0, 3);
   }
 
   async detectLanguage(text: string): Promise<{ language: string; region: string }> {

@@ -235,10 +235,48 @@ export function DecoderPage() {
                   </div>
                 </Card>
 
+                {/* Translation - Most prominent section */}
+                {result.detectedLanguage !== 'English' && result.translation && (
+                  <Card className={`${isOverlay ? 'p-3' : 'p-4'} bg-blue-500/10 border-blue-500/30`}>
+                    <div className="flex items-start justify-between gap-2 mb-2">
+                      <h3 className="font-semibold text-sm text-blue-600 dark:text-blue-400">Translation</h3>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 -mt-1 -mr-1"
+                        onClick={async () => {
+                          await navigator.clipboard.writeText(result.translation);
+                          toast({ title: 'Copied!', description: 'Translation copied to clipboard.' });
+                        }}
+                      >
+                        <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+                      </Button>
+                    </div>
+                    <p className={`${isOverlay ? 'text-base' : 'text-lg'} font-medium leading-relaxed`}>
+                      "{result.translation}"
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Original: "{result.originalText}"
+                    </p>
+                  </Card>
+                )}
+
+                {/* Tone Tags */}
+                {result.toneTags.length > 0 && (
+                  <Card className={`${isOverlay ? 'p-2.5' : 'p-3'}`}>
+                    <h3 className="font-semibold text-sm mb-2">Tone</h3>
+                    <div className="flex flex-wrap gap-1.5">
+                      {result.toneTags.map((tone: ToneType, index: number) => (
+                        <ToneTag key={index} tone={tone} />
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
                 {/* Plain Explanation */}
                 <Card className={`${isOverlay ? 'p-3' : 'p-4'} bg-primary/10 border-primary/20`}>
                   <div className="flex items-start justify-between gap-2 mb-2">
-                    <h3 className="font-semibold text-sm text-primary">What They're Saying</h3>
+                    <h3 className="font-semibold text-sm text-primary">What They Mean</h3>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -274,21 +312,35 @@ export function DecoderPage() {
                   </div>
                 </Card>
 
-                {/* Tone Tags */}
-                {result.toneTags.length > 0 && (
-                  <Card className={`${isOverlay ? 'p-2.5' : 'p-3'}`}>
-                    <h3 className="font-semibold text-sm mb-2">Tone</h3>
-                    <div className="flex flex-wrap gap-1.5">
-                      {result.toneTags.map((tone: ToneType, index: number) => (
-                        <ToneTag key={index} tone={tone} />
-                      ))}
-                    </div>
-                  </Card>
-                )}
-
                 {/* Slang List */}
                 {result.slangItems.length > 0 && (
                   <SlangList slangItems={result.slangItems} compact={isOverlay} />
+                )}
+
+                {/* Suggested Responses */}
+                {result.suggestedResponses && result.suggestedResponses.length > 0 && (
+                  <Card className={`${isOverlay ? 'p-3' : 'p-4'} bg-green-500/10 border-green-500/30`}>
+                    <h3 className="font-semibold text-sm text-green-600 dark:text-green-400 mb-3">Suggested Responses</h3>
+                    <div className="space-y-2">
+                      {result.suggestedResponses.map((response, idx) => (
+                        <button
+                          key={idx}
+                          onClick={async () => {
+                            // Extract just the response text (after the colon if present)
+                            const responseText = response.includes(':') 
+                              ? response.split(':').slice(1).join(':').trim().replace(/^["']|["']$/g, '')
+                              : response;
+                            await navigator.clipboard.writeText(responseText);
+                            toast({ title: 'Copied!', description: 'Response copied to clipboard.' });
+                          }}
+                          className="w-full text-left p-2.5 rounded-lg bg-background hover:bg-accent transition-colors text-sm flex items-center gap-2 group"
+                        >
+                          <span className="flex-1">{response}</span>
+                          <Copy className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                        </button>
+                      ))}
+                    </div>
+                  </Card>
                 )}
 
                 {/* Quick Reply Guidance */}

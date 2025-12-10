@@ -173,8 +173,16 @@ export function HistoryPage() {
                 <p className="text-base font-medium">{selectedMessage.originalText}</p>
               </div>
 
+              {/* Translation - show if not English */}
+              {selectedMessage.translation && selectedMessage.detectedLanguage !== 'English' && (
+                <div className="bg-blue-500/10 rounded-xl p-4 border border-blue-500/30">
+                  <p className="text-xs text-blue-600 dark:text-blue-400 mb-1 uppercase tracking-wide">Translation</p>
+                  <p className="text-base font-medium">"{selectedMessage.translation}"</p>
+                </div>
+              )}
+
               <div className="bg-primary/10 rounded-xl p-4 border border-primary/20">
-                <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">Decoded Meaning</p>
+                <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wide">What They Mean</p>
                 <p className="text-base">{selectedMessage.plainExplanation}</p>
               </div>
 
@@ -196,8 +204,24 @@ export function HistoryPage() {
                     {selectedMessage.slangItems.map((item, index) => (
                       <div key={index} className="bg-secondary/50 rounded-xl p-3">
                         <p className="font-medium text-sm text-primary mb-1">{item.term}</p>
-                        <p className="text-sm mb-1">{item.definition}</p>
-                        <p className="text-xs text-muted-foreground">{item.context}</p>
+                        <p className="text-sm mb-1">{item.meaning || item.definition}</p>
+                        {(item.notes || item.context) && (
+                          <p className="text-xs text-muted-foreground">{item.notes || item.context}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Suggested Responses */}
+              {selectedMessage.suggestedResponses && selectedMessage.suggestedResponses.length > 0 && (
+                <div>
+                  <p className="text-sm font-semibold mb-2 text-green-600 dark:text-green-400">Suggested Responses</p>
+                  <div className="space-y-2">
+                    {selectedMessage.suggestedResponses.map((response, index) => (
+                      <div key={index} className="bg-green-500/10 rounded-xl p-3 border border-green-500/20">
+                        <p className="text-sm">{response}</p>
                       </div>
                     ))}
                   </div>

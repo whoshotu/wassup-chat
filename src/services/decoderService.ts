@@ -491,6 +491,55 @@ function generateExplanation(
   return explanation.trim();
 }
 
+// Generate suggested responses based on detected tones
+function generateSuggestedResponses(tones: ToneType[]): string[] {
+  const responses: string[] = [];
+  
+  if (tones.includes('sexual')) {
+    responses.push('Set a boundary: "Let\'s keep it fun and friendly 😊"');
+    responses.push('Redirect: "Thanks! Check out my tip menu 💕"');
+    responses.push('Ignore and move on');
+  } else if (tones.includes('rude') || tones.includes('insult')) {
+    responses.push('Ignore the message');
+    responses.push('Set a boundary: "Please be respectful"');
+    responses.push('Block/mute if it continues');
+  } else if (tones.includes('compliment') && tones.includes('flirty')) {
+    responses.push('Thank them: "Aww thank you! 💕"');
+    responses.push('Playful response: "You\'re too sweet!"');
+    responses.push('Engage: "Thanks babe! How are you?"');
+  } else if (tones.includes('compliment')) {
+    responses.push('Simple thanks: "Thank you! 😊"');
+    responses.push('Warm response: "That\'s so sweet of you!"');
+    responses.push('Engage more: "Thanks! What brings you here today?"');
+  } else if (tones.includes('question')) {
+    responses.push('Answer directly if comfortable');
+    responses.push('Redirect to tip menu/rules');
+    responses.push('Playful deflection if too personal');
+  } else if (tones.includes('request')) {
+    responses.push('Check your tip menu');
+    responses.push('Set expectations: "Sure, for X tokens!"');
+    responses.push('Politely decline if not comfortable');
+  } else if (tones.includes('grateful')) {
+    responses.push('Acknowledge: "You\'re welcome! 💕"');
+    responses.push('Keep it warm: "Glad you enjoyed it!"');
+    responses.push('Encourage: "Thanks for being here!"');
+  } else if (tones.includes('joke') || tones.includes('sarcastic')) {
+    responses.push('Play along: "Haha 😂"');
+    responses.push('React with an emoji');
+    responses.push('Light banter back');
+  } else if (tones.includes('friendly')) {
+    responses.push('Friendly reply: "Hey! 👋"');
+    responses.push('Engage: "How\'s it going?"');
+    responses.push('Warm welcome: "Nice to see you!"');
+  } else {
+    responses.push('Acknowledge with a smile');
+    responses.push('Keep the conversation going');
+    responses.push('React naturally');
+  }
+  
+  return responses.slice(0, 3);
+}
+
 /**
  * Decoder Service - main interface for message decoding
  */
@@ -519,16 +568,26 @@ export const decoderService = {
     // Detect slang
     const slangItems = detectSlang(text, language);
     
+    // Generate translation
+    const translation = language !== 'English' 
+      ? generateTranslation(text, language)
+      : text;
+    
     // Generate explanation
     const plainExplanation = generateExplanation(text, language, toneTags, slangItems, targetLang);
+    
+    // Generate suggested responses based on tone
+    const suggestedResponses = generateSuggestedResponses(toneTags);
     
     return {
       originalText: text,
       detectedLanguage: language,
       region,
+      translation,
       plainExplanation,
       slangItems,
       toneTags,
+      suggestedResponses,
       createdAt: new Date().toISOString(),
     };
   },
