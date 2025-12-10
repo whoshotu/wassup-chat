@@ -35,15 +35,22 @@ export function OnboardingPage() {
   };
 
   const handleComplete = async () => {
+    // Get languages for selected regions and preload them
+    const viewerLanguages = decoderService.getLanguagesForRegions(viewerRegions);
+    
+    // Preload the language packs
+    const preloadResult = await decoderService.preloadLanguages(viewerLanguages);
+    
     const success = await updateProfile({
       primaryLanguage,
       commonRegions: viewerRegions,
+      commonViewerLanguages: viewerLanguages,
     });
     
     if (success) {
       toast({
         title: 'Profile setup complete!',
-        description: "You're all set to start decoding messages.",
+        description: `${preloadResult.status}. You're all set to start decoding messages.`,
       });
       navigate('/decoder');
     } else {
@@ -109,7 +116,7 @@ export function OnboardingPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-80 overflow-y-auto scrollbar-thin p-1">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-64 overflow-y-auto scrollbar-thin p-1">
                   {commonRegions.map((region) => (
                     <div key={region} className="flex items-center space-x-2">
                       <Checkbox
@@ -126,6 +133,21 @@ export function OnboardingPage() {
                     </div>
                   ))}
                 </div>
+                
+                {/* Show languages that will be downloaded */}
+                {viewerRegions.length > 0 && (
+                  <div className="bg-secondary/50 rounded-lg p-3">
+                    <p className="text-xs text-muted-foreground mb-2">Languages to download:</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {decoderService.getLanguagesForRegions(viewerRegions).map((lang) => (
+                        <span key={lang} className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                          {lang}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex gap-3">
                   <Button variant="outline" onClick={() => setStep(1)} className="flex-1 h-11">
                     Back
@@ -134,7 +156,7 @@ export function OnboardingPage() {
                     {status.isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Saving...
+                        Downloading...
                       </>
                     ) : (
                       'Complete Setup'

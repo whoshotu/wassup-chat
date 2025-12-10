@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { ThemeToggle } from '@/components/layout/ThemeToggle';
@@ -14,7 +14,7 @@ import { useSubscription, PLANS } from '@/contexts/SubscriptionContext';
 import { decoderService } from '@/services/decoderService';
 import { subscriptionService } from '@/services/subscriptionService';
 import { useToast } from '@/components/ui/use-toast';
-import { LogOut, User, Settings, Moon, Sun, Globe, Crown, CreditCard, Zap } from 'lucide-react';
+import { LogOut, User, Settings, Moon, Sun, Globe, Crown, CreditCard, Zap, Languages, Download } from 'lucide-react';
 
 export function SettingsPage() {
   const { user, updateProfile, logout } = useAuth();
@@ -23,11 +23,17 @@ export function SettingsPage() {
   const [primaryLanguage, setPrimaryLanguage] = useState(user?.primaryLanguage || 'English');
   const [viewerRegions, setViewerRegions] = useState<string[]>(user?.commonRegions || []);
   const [billingLoading, setBillingLoading] = useState(false);
+  const [preloadedLanguages, setPreloadedLanguages] = useState<string[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
   const supportedLanguages = decoderService.getSupportedLanguages();
   const commonRegions = decoderService.getCommonRegions();
+
+  // Load preloaded languages on mount
+  useEffect(() => {
+    setPreloadedLanguages(decoderService.getPreloadedLanguages());
+  }, []);
 
   const handleRegionToggle = (region: string) => {
     setViewerRegions((prev) =>
@@ -36,13 +42,23 @@ export function SettingsPage() {
   };
 
   const handleSave = async () => {
+    // Get languages for selected regions and preload them
+    const viewerLanguages = decoderService.getLanguagesForRegions(viewerRegions);
+    
+    // Preload the language packs
+    const preloadResult = await decoderService.preloadLanguages(viewerLanguages);
+    
+    // Update local state
+    setPreloadedLanguages(decoderService.getPreloadedLanguages());
+    
     await updateProfile({
       primaryLanguage,
       commonRegions: viewerRegions,
+      commonViewerLanguages: viewerLanguages,
     });
     toast({
       title: 'Settings saved',
-      description: 'Your preferences have been updated.',
+      description: `${preloadResult.status}. Your preferences have been updated.`,
     });
   };
 
@@ -243,6 +259,31 @@ export function SettingsPage() {
               </div>
             ))}
           </div>
+        </Card>
+
+        {/* Downloaded Languages */}
+        <Card className="p-4 sm:p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Languages className="h-5 w-5 text-muted-foreground" />
+            <h2 className="font-semibold">Downloaded Languages</h2>
+          </div>
+          <p className="text-sm text-muted-foreground mb-4">
+            Language packs automatically downloaded based on your viewer regions
+          </p>
+          {preloadedLanguages.length > 0 ? (
+            <div className="flex flex-wrap gap-2">
+              {preloadedLanguages.map((lang) => (
+                <Badge key={lang} variant="secondary" className="flex items-center gap-1">
+                  <Download className="h-3 w-3" />
+                  {lang}
+                </Badge>
+              ))}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground italic">
+              No languages downloaded yet. Select viewer regions above and save to download language packs.
+            </p>
+          )}
         </Card>
 
         {/* Save Button */}

@@ -240,8 +240,10 @@ const translationDictionary: Record<string, Record<string, string>> = {
     'eres': 'you are',
     'muy': 'very',
     'bonita': 'pretty',
+    'eres bonita': 'you are pretty',
+    'eres muy bonita': 'you are very pretty',
     'como estas': 'how are you',
-    'bien': 'good/well',
+    'bien': 'good',
     'gracias': 'thank you',
     'por favor': 'please',
     'quiero': 'I want',
@@ -249,24 +251,30 @@ const translationDictionary: Record<string, Record<string, string>> = {
     'mas': 'more',
     'hoy': 'today',
     'ahora': 'now',
+    'te amo': 'I love you',
+    'te quiero': 'I love you',
+    'guapa': 'beautiful',
+    'preciosa': 'gorgeous',
   },
   French: {
-    'coucou': 'hey/hi',
+    'coucou': 'hey',
     'salut': 'hi',
-    'bonjour': 'hello/good day',
+    'bonjour': 'hello',
     'ma belle': 'my beautiful',
     'ma chérie': 'my darling',
     'bisous': 'kisses',
     'bb': 'baby',
-    'canon': 'hot/gorgeous',
-    'mdr': 'LOL (laughing)',
+    'canon': 'gorgeous',
+    'mdr': 'LOL',
     'je t\'aime': 'I love you',
     'tu es': 'you are',
+    'tu es belle': 'you are beautiful',
+    'tu es très belle': 'you are very beautiful',
     'très': 'very',
     'belle': 'beautiful',
     'jolie': 'pretty',
     'comment ça va': 'how are you',
-    'bien': 'good/well',
+    'bien': 'good',
     'merci': 'thank you',
     's\'il te plaît': 'please',
     'je veux': 'I want',
@@ -300,61 +308,80 @@ const translationDictionary: Record<string, Record<string, string>> = {
     'delícia': 'delicious/hot',
     'bb': 'baby',
     'você é': 'you are',
+    'você é linda': 'you are beautiful',
+    'você é muito linda': 'you are very beautiful',
     'muito': 'very',
     'bonita': 'pretty',
+    'linda': 'beautiful',
     'obrigado': 'thank you',
     'por favor': 'please',
     'quero': 'I want',
     'ver': 'to see',
     'mais': 'more',
+    'te amo': 'I love you',
+    'gostosa': 'hot/sexy',
   },
   Italian: {
-    'ciao': 'hi/bye',
+    'ciao': 'hi',
+    'ciao bella': 'hi beautiful',
     'bella': 'beautiful',
     'bellissima': 'gorgeous',
+    'sei bellissima': 'you are gorgeous',
     'amore': 'love',
-    'tesoro': 'treasure/darling',
+    'amore mio': 'my love',
+    'tesoro': 'darling',
     'sei': 'you are',
     'molto': 'very',
+    'molto bella': 'very beautiful',
     'grazie': 'thank you',
     'per favore': 'please',
     'voglio': 'I want',
     'vedere': 'to see',
     'più': 'more',
+    'ti amo': 'I love you',
   },
   Japanese: {
-    'かわいい': 'cute (kawaii)',
-    'すごい': 'amazing (sugoi)',
-    '綺麗': 'beautiful (kirei)',
+    'かわいい': 'cute',
+    'すごい': 'amazing',
+    '綺麗': 'beautiful',
     'www': 'LOL',
-    '好き': 'I like you (suki)',
+    '好き': 'I like you',
+    '大好き': 'I really like you',
     'こんにちは': 'hello',
     'ありがとう': 'thank you',
     'お願い': 'please',
     'もっと': 'more',
+    '見せて': 'show me',
   },
   Korean: {
-    '예쁘다': 'pretty (yeppeuda)',
-    '사랑해': 'I love you (saranghae)',
-    '대박': 'amazing (daebak)',
+    '예쁘다': 'pretty',
+    '예뻐요': 'you are pretty',
+    '사랑해': 'I love you',
+    '대박': 'amazing',
     'ㅋㅋㅋ': 'LOL',
-    '누나': 'older sister (noona)',
+    '누나': 'older sister',
     '안녕': 'hello',
+    '안녕하세요': 'hello',
     '감사합니다': 'thank you',
     '제발': 'please',
     '더': 'more',
+    '보여줘': 'show me',
   },
   Russian: {
-    'привет': 'hi (privet)',
-    'красивая': 'beautiful (krasivaya)',
-    'милая': 'sweet/cute (milaya)',
+    'привет': 'hi',
+    'привет красавица': 'hi beautiful',
+    'красивая': 'beautiful',
+    'ты красивая': 'you are beautiful',
+    'милая': 'sweet',
     'солнышко': 'sunshine',
     'ты': 'you',
     'очень': 'very',
+    'очень красивая': 'very beautiful',
     'спасибо': 'thank you',
     'пожалуйста': 'please',
     'хочу': 'I want',
     'больше': 'more',
+    'люблю тебя': 'I love you',
   },
 };
 
@@ -370,8 +397,11 @@ function generateTranslation(text: string, language: string): string {
   
   for (const term of sortedTerms) {
     const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
-    translation = translation.replace(regex, `[${dict[term]}]`);
+    translation = translation.replace(regex, dict[term]);
   }
+  
+  // Clean up the translation - capitalize first letter
+  translation = translation.charAt(0).toUpperCase() + translation.slice(1);
   
   return translation;
 }
@@ -404,14 +434,8 @@ function generateExplanation(
   const mainTone = tones[0] || 'neutral';
   const toneDesc = toneDescriptions[mainTone];
   
-  // Start with translation if not English
+  // Start explanation (translation is now shown separately in the UI)
   let explanation = '';
-  
-  if (language !== 'English') {
-    const roughTranslation = generateTranslation(text, language);
-    explanation += `**Translation:** "${roughTranslation}"\n\n`;
-    explanation += `**Language:** ${language}\n\n`;
-  }
   
   // Add meaning section
   explanation += `**What they're saying:** `;
@@ -647,6 +671,71 @@ export const decoderService = {
       'Latin America',
       'Europe',
     ];
+  },
+
+  /**
+   * Map regions to their primary languages
+   */
+  getLanguagesForRegions(regions: string[]): string[] {
+    const regionToLanguage: Record<string, string[]> = {
+      'United States': ['English'],
+      'United Kingdom': ['English'],
+      'Canada': ['English', 'French'],
+      'Australia': ['English'],
+      'Mexico': ['Spanish'],
+      'Spain': ['Spanish'],
+      'Brazil': ['Portuguese'],
+      'France': ['French'],
+      'Germany': ['German'],
+      'Italy': ['Italian'],
+      'Japan': ['Japanese'],
+      'South Korea': ['Korean'],
+      'Russia': ['Russian'],
+      'China': ['Chinese'],
+      'India': ['Hindi', 'English'],
+      'Middle East': ['Arabic'],
+      'Latin America': ['Spanish', 'Portuguese'],
+      'Europe': ['German', 'French', 'Spanish', 'Italian', 'Dutch', 'Polish'],
+    };
+
+    const languages = new Set<string>();
+    for (const region of regions) {
+      const langs = regionToLanguage[region] || [];
+      langs.forEach(lang => languages.add(lang));
+    }
+    return Array.from(languages);
+  },
+
+  /**
+   * Preload translation dictionaries for selected languages
+   * This simulates downloading/caching language packs
+   */
+  async preloadLanguages(languages: string[]): Promise<{ loaded: string[]; status: string }> {
+    await simulateDelay(300);
+    
+    // In a real app, this would download language packs from a server
+    // For now, we just verify the languages are supported
+    const supportedLangs = this.getSupportedLanguages();
+    const loaded = languages.filter(lang => supportedLangs.includes(lang));
+    
+    // Store preloaded languages in localStorage for quick access
+    const existing = JSON.parse(localStorage.getItem('preloadedLanguages') || '[]');
+    const combined = [...new Set([...existing, ...loaded])];
+    localStorage.setItem('preloadedLanguages', JSON.stringify(combined));
+    
+    console.log(`Preloaded ${loaded.length} language(s):`, loaded);
+    
+    return {
+      loaded,
+      status: `${loaded.length} language pack(s) ready`,
+    };
+  },
+
+  /**
+   * Get preloaded languages
+   */
+  getPreloadedLanguages(): string[] {
+    return JSON.parse(localStorage.getItem('preloadedLanguages') || '[]');
   },
 };
 
