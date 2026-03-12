@@ -2,7 +2,7 @@ services:
 - type: web
   name: scaffolder-service
   runtime: docker
-  dockerfilePath: Dockerfile
+  dockerfilePath: backend.Dockerfile
   dockerContext: scaffolder-service
   plan: free
   healthCheckPath: /health
