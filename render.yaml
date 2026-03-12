@@ -29,3 +29,6 @@ services:
   image:
     url: libretranslate/libretranslate:latest
   plan: free
+  healthCheckPath: /
+  # LibreTranslate is heavy and slow to start, especially on free tiers.
+  # We'll use the default health check but ensure it has time to boot.
