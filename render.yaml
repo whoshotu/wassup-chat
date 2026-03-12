@@ -1,24 +1,5 @@
 services:
 - type: web
-  name: scaffolder-service
-  runtime: docker
-  dockerfilePath: scaffolder-service/backend.Dockerfile
-  dockerContext: .
-  plan: free
-  healthCheckPath: /health
-  envVars:
-  - key: PORT
-    value: "4000"
-  - key: LIBRETRANSLATE_URL
-    value: "http://libretranslate:5000"
-  - key: SCAFFOLDER_API_KEY
-    value: "REDACTED"
-  - key: TENANCY_ENABLED
-    value: "true"
-  - key: BULK_LANG_GEN
-    value: "false"
-
-- type: web
   name: wassup-chat-decoder
   runtime: static
   buildCommand: "npm ci && npm run build"
@@ -27,19 +8,3 @@ services:
     - type: rewrite
       source: "/*"
       destination: "/index.html"
-  envVars:
-  - key: VITE_SCAFFOLDER_URL
-    value: "REPLACE_ME_WITH_SCAFFOLDER_SERVICE_URL"
-
-- type: web
-  name: libretranslate
-  runtime: image
-  image:
-    url: libretranslate/libretranslate:latest
-  plan: free
-  envVars:
-  - key: LT_UPDATE_MODELS
-    value: "false"
-  - key: LT_LOAD_ONLY
-    value: "en,es,fr,de,it,pt,ja,ko,hi,id,vi,th"
-  healthCheckPath: /
