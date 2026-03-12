@@ -22,7 +22,7 @@ services:
   name: wassup-frontend
   runtime: static
   buildCommand: "npm ci && npm run build"
-  staticPublishPath: "./dist"
+  publishPath: "dist"
   routes:
     - type: rewrite
       source: "/*"
