@@ -44,7 +44,7 @@ export function DecoderPage() {
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
   const [inputText, setInputText] = useState('')
-  const [outputLang, setOutputLang] = useState('English')
+  const [outputLang, setOutputLang] = useState('Auto-detect')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<DecodeResult | null>(null)
   const [activeTab, setActiveTab] = useState('decode')
