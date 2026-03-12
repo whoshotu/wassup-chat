@@ -23,7 +23,7 @@ import {
   HelpCircle,
   LogOut
 } from 'lucide-react'
-import scaffolder from '@/services/scaffolderService'
+import decoder from '@/lib/decoder'
 import { useTheme } from '@/contexts/ThemeContext'
 import { cn } from '@/lib/utils'
 
@@ -50,15 +50,6 @@ export function DecoderPage() {
   const [activeTab, setActiveTab] = useState('decode')
   const [history, setHistory] = useState<DecodeResult[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-  const [urlWarning, setUrlWarning] = useState(false)
-
-  // Check for configuration URL
-  useEffect(() => {
-    const url = (import.meta as any).env?.VITE_SCAFFOLDER_URL;
-    if (url && url.includes('REPLACE_ME')) {
-      setUrlWarning(true)
-    }
-  }, [])
 
   // Load history from localStorage
   useEffect(() => {
@@ -85,12 +76,8 @@ export function DecoderPage() {
     if (!inputText.trim()) return
     setLoading(true)
     try {
-      const payload: any = {
-        language: 'auto',
-        targetLanguage: outputLang,
-        text: inputText,
-      }
-      const res = await scaffolder.generateProject(payload)
+      // Use local client-side decoder
+      const res = await decoder.decodeMessage(inputText, outputLang === 'Auto-detect' ? 'English' : outputLang)
       const newDecode: DecodeResult = {
         ...res,
         id: Math.random().toString(36).substr(2, 9),
@@ -535,14 +522,6 @@ export function DecoderPage() {
       </header>
 
       <main className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full pb-24 lg:pt-12">
-        {/* Configuration Alert */}
-        {urlWarning && (
-          <div className="mb-4 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-500 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" />
-            <span>Config Required: Set <strong>VITE_SCAFFOLDER_URL</strong> in your Render dashboard to point to your backend service.</span>
-          </div>
-        )}
-
         {/* Dynamic Tab Rendering */}
         <div className="animate-in fade-in duration-300">
           {activeTab === 'decode' && renderDecode()}
