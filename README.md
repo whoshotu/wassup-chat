@@ -9,6 +9,7 @@ A mobile-first web app that instantly translates and explains international view
 - **Tone Detection**: Visual tags indicating message intent (friendly, flirty, negative, etc.)
 - **Message History**: Saved decoded messages with search and favorites
 - **Quick Reply Guidance**: Intent-based suggestions for how to respond
+- Tempo scaffolding workflow is now provided by a standalone open-source scaffolder service with translation and vibe-check. This decouples scaffolding from the app and supports multi-language generation.
 
 ## Tech Stack
 

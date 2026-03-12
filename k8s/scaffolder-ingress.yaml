@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: scaffolder-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  rules:
+  - host: scaffolder.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: scaffolder-service
+            port:
+              number: 4000
+  tls:
+  - hosts:
+    - scaffolder.example.com
+    secretName: scaffolder-tls

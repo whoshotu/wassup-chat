@@ -1,0 +1,29 @@
+version: '3.9'
+services:
+  libretranslate:
+    image: libretranslate/libretranslate:latest
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+  scaffolder:
+    build:
+      context: ./scaffolder-service
+      dockerfile: Dockerfile
+    environment:
+      - LIBRETRANSLATE_URL=http://libretranslate:5000
+      - TENANCY_ENABLED=true
+      - BULK_LANG_GEN=true
+    ports:
+      - "4000:4000"
+    depends_on:
+      - libretranslate
+    restart: unless-stopped
+  wassup-frontend:
+    build:
+      context: ./wassup-frontend
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - scaffolder
+    restart: unless-stopped
