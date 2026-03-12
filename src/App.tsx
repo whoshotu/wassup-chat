@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { Toaster } from "./components/ui/toaster";
-import ScaffoldPage from "./pages/ScaffoldPage";
+import DecoderPage from "./pages/DecoderPage";
 
 // Loading spinner component
 function LoadingSpinner() {
@@ -16,21 +16,15 @@ function LoadingSpinner() {
   );
 }
 
-function AppRoutes() {
-  return (
-    <Routes>
-      <Route path="/" element={<ScaffoldPage />} />
-      <Route path="/scaffold" element={<ScaffoldPage />} />
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
-  );
-}
-
 function App() {
   return (
-    <ThemeProvider>
+    <ThemeProvider defaultTheme="dark" storageKey="wassup-theme">
       <Suspense fallback={<LoadingSpinner />}>
-        <AppRoutes />
+        <Routes>
+          <Route path="/" element={<DecoderPage />} />
+          <Route path="/decoder" element={<DecoderPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
         <Toaster />
       </Suspense>
     </ThemeProvider>

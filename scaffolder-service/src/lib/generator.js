@@ -108,71 +108,73 @@ const BULK_LANG_GEN = (process.env.BULK_LANG_GEN === 'true');
 export async function generateProject(input = {}, tenantId = '') {
   const {
     language = 'auto',
-    targetLanguage = 'en',
-    tone = 'neutral',
-    style = 'default',
-    projectType = 'web-app',
-    features = []
+    targetLanguage = 'English',
+    text = '',
+    sample = ''
   } = input;
-  // Auto-detect input language if not provided or set to 'auto'
-  const inputTextForDetection = input.sample || input.text || '';
+
+  const contentToAnalyze = text || sample || '';
+  if (!contentToAnalyze) {
+    throw new Error('No text provided for analysis');
+  }
+
+  // Auto-detect input language
   let detectedLang = language && language.toLowerCase() !== 'auto' ? language : null;
   if (!detectedLang) {
-    const d = detectLanguageFromText(inputTextForDetection);
+    const d = detectLanguageFromText(contentToAnalyze);
     detectedLang = d.language;
   }
 
-  // Basic skeleton content using detected language
-  const skeleton = [
-    `Project Type: ${projectType}`,
-    `Source Language: ${detectedLang}`,
-    `Target Language: ${targetLanguage}`,
-    `Features: ${Array.isArray(features) ? features.join(', ') : features}`
-  ].join('\n');
-  // Bulk path removed; single-language generation path continues below
-
-  // Single-language path (no bulk)
-  let translatedContent = skeleton;
-  let translationLog = '';
-  if (targetLanguage && targetLanguage.toLowerCase() !== (language || 'en').toLowerCase()) {
-    translatedContent = await trans(skeleton, language, targetLanguage);
-    translationLog = `Translated ${language} -> ${targetLanguage}`;
+  // Translate the actual content
+  let translatedText = contentToAnalyze;
+  if (targetLanguage && targetLanguage !== detectedLang) {
+    translatedText = await trans(contentToAnalyze, detectedLang, targetLanguage);
   }
-  const vibeCheck = computeVibeScore(translatedContent, tone);
-  const tweaks = suggestVibeTweaks(translatedContent, tone);
-  const scaffolds = { [detectedLang]: translatedContent };
+
+  // Detect Tone and Vibe
+  const lowerText = contentToAnalyze.toLowerCase();
+  const tones = [];
+  
+  // Simple heuristics for tone
+  if (lowerText.includes('?') || lowerText.includes('how') || lowerText.includes('what')) tones.push('question');
+  if (lowerText.includes('please') || lowerText.includes('thanks') || lowerText.includes('thank you')) tones.push('grateful');
+  if (lowerText.includes('love') || lowerText.includes('beautiful') || lowerText.includes('sexy') || lowerText.includes('hot')) tones.push('compliment');
+  if (lowerText.includes('baby') || lowerText.includes('sweetie') || lowerText.includes('honey')) tones.push('flirty');
+  if (lowerText.includes('fuck') || lowerText.includes('shit') || lowerText.includes('hate')) tones.push('negative');
+  if (lowerText.includes('wow') || lowerText.includes('!') || lowerText.includes('amazing')) tones.push('excited');
+  
+  if (tones.length === 0) tones.push('neutral');
+
+  // Vibe score
+  const vibeScore = computeVibeScore(contentToAnalyze, tones.includes('flirty') ? 'friendly' : 'neutral');
+
+  // Suggested Responses
+  const suggestions = [];
+  if (tones.includes('question')) suggestions.push('Answer the question clearly.');
+  if (tones.includes('compliment')) suggestions.push('Say thank you and send a wink.');
+  if (tones.includes('flirty')) suggestions.push('Play along and keep it light.');
+  if (tones.includes('negative')) suggestions.push('Politely decline or ignore.');
+  if (suggestions.length === 0) suggestions.push('Keep the conversation going!');
+
   return {
-    scaffolds,
-    translationLog,
-    vibeScore: vibeCheck,
-    tweaks,
-    languages: [detectedLang],
+    originalText: contentToAnalyze,
+    translatedText,
     sourceLanguage: detectedLang,
-    tenantId,
+    targetLanguage,
+    toneTags: tones,
+    vibeScore,
+    suggestions,
     status: 'generated'
   };
 }
 
 function computeVibeScore(text, tone) {
-  // Very lightweight heuristic
-  let score = 0;
-  if (!text) return score;
-  if (tone === 'friendly') score += 1;
-  if (tone === 'formal') score += 0.5;
-  if (text.toLowerCase().includes('please')) score += 0.5;
-  if (text.length < 100) score += 0.2;
+  let score = 3.0; // Baseline
+  if (text.includes('!')) score += 0.5;
+  if (text.includes('?')) score -= 0.2;
+  if (tone === 'friendly') score += 1.0;
+  if (text.length > 50) score += 0.3;
   return Math.max(0, Math.min(5, score));
-}
-
-function suggestVibeTweaks(text, tone) {
-  const tweaks = [];
-  if (tone === 'friendly' && !text.toLowerCase().includes('thank you')) {
-    tweaks.push('Add a friendly closing line.');
-  }
-  if (tone === 'formal') {
-    tweaks.push('Maintain formal register across sections.');
-  }
-  return tweaks;
 }
 
 export default generateProject;
