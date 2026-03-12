@@ -24,7 +24,7 @@ import {
   Shield,
   HelpCircle
 } from 'lucide-react'
-import scaffolder from '@/services/scaffolderService'
+import { useTheme } from '@/contexts/ThemeContext'
 import { cn } from '@/lib/utils'
 
 type DecodeResult = {
@@ -41,6 +41,7 @@ type DecodeResult = {
 }
 
 export function DecoderPage() {
+  const { theme, toggleTheme } = useTheme()
   const [inputText, setInputText] = useState('')
   const [outputLang, setOutputLang] = useState('English')
   const [loading, setLoading] = useState(false)
@@ -48,6 +49,15 @@ export function DecoderPage() {
   const [activeTab, setActiveTab] = useState('decode')
   const [history, setHistory] = useState<DecodeResult[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [urlWarning, setUrlWarning] = useState(false)
+
+  // Check for configuration URL
+  useEffect(() => {
+    const url = (import.meta as any).env?.VITE_SCAFFOLDER_URL;
+    if (url && url.includes('REPLACE_ME')) {
+      setUrlWarning(true)
+    }
+  }, [])
 
   // Load history from localStorage
   useEffect(() => {
@@ -371,7 +381,14 @@ export function DecoderPage() {
                 <p className="text-xs text-slate-500">Dark mode</p>
               </div>
             </div>
-            <Button variant="outline" size="sm" className="bg-[#0a0a0c] border-white/10 text-white rounded-xl">Light</Button>
+            <Button 
+              onClick={toggleTheme}
+              variant="outline" 
+              size="sm" 
+              className="bg-[#0a0a0c] border-white/10 text-white rounded-xl"
+            >
+              {theme === 'dark' ? 'Light' : 'Dark'}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -530,13 +547,24 @@ export function DecoderPage() {
               <div className="w-full h-full bg-primary" />
             </div>
           </div>
-          <button className="p-2 hover:bg-white/5 rounded-full transition-colors">
-            <Sun className="w-5 h-5 text-slate-400" />
+          <button 
+            onClick={toggleTheme}
+            className="p-2 hover:bg-white/5 rounded-full transition-colors"
+          >
+            {theme === 'dark' ? <Sun className="w-5 h-5 text-slate-400" /> : <Moon className="w-5 h-5 text-slate-400" />}
           </button>
         </div>
       </header>
 
       <main className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full pb-24 lg:pt-12">
+        {/* Configuration Alert */}
+        {urlWarning && (
+          <div className="mb-4 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-500 text-xs flex items-center gap-2">
+            <AlertCircle className="w-4 h-4" />
+            <span>Config Required: Set <strong>VITE_SCAFFOLDER_URL</strong> in your Render dashboard to point to your backend service.</span>
+          </div>
+        )}
+
         {/* Upgrade Banner - Only show on Decode page */}
         {activeTab === 'decode' && (
           <div className="mb-8 p-4 rounded-xl border border-primary/20 bg-primary/5 flex items-center justify-between group cursor-pointer hover:bg-primary/10 transition-colors">
