@@ -1,4 +1,5 @@
-import franc from 'franc';
+import { franc } from 'franc';
+import trans from './translate.js';
 
 // Lightweight language detection (input text -> language)
 export function detectLanguageFromText(text = '') {
