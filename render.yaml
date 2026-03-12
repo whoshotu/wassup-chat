@@ -2,7 +2,7 @@ services:
 - type: web
   name: scaffolder-service
   runtime: docker
-  dockerfilePath: Dockerfile
+  dockerfilePath: scaffolder-service/Dockerfile
   dockerContext: scaffolder-service
   plan: free
   healthCheckPath: /health
@@ -31,6 +31,5 @@ services:
   image:
     url: libretranslate/libretranslate:latest
   plan: free
-  healthCheckPath: /
-  # LibreTranslate is heavy and slow to start, especially on free tiers.
-  # We'll use the default health check but ensure it has time to boot.
+  # Removed explicit healthCheckPath to let Render use its defaults with longer tolerance.
+  # LibreTranslate boot up can take several minutes on free instances.
