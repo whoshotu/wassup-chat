@@ -24,6 +24,7 @@ import {
   Shield,
   HelpCircle
 } from 'lucide-react'
+import scaffolder from '@/services/scaffolderService'
 import { useTheme } from '@/contexts/ThemeContext'
 import { cn } from '@/lib/utils'
 
@@ -343,23 +344,19 @@ export function DecoderPage() {
           <div className="grid gap-3">
             <div className="flex justify-between items-center text-sm">
               <span className="text-slate-400">Status</span>
-              <span className="text-emerald-500 font-medium">Active</span>
+              <span className="text-emerald-500 font-medium">Active (Free Forever)</span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-slate-400">Decodes</span>
-              <span className="text-slate-200 font-medium flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 text-primary fill-primary" /> 5/day
+              <span className="text-emerald-400 font-medium flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 fill-emerald-400" /> Unlimited
               </span>
             </div>
             <div className="flex justify-between items-center text-sm">
               <span className="text-slate-400">Languages</span>
-              <span className="text-slate-200 font-medium">3 languages</span>
+              <span className="text-slate-200 font-medium">All Supported</span>
             </div>
           </div>
-
-          <Button className="w-full bg-primary hover:bg-primary/90 rounded-xl font-bold gap-2">
-            <Crown className="w-4 h-4" /> Upgrade to Pro
-          </Button>
         </CardContent>
       </Card>
 
@@ -540,12 +537,9 @@ export function DecoderPage() {
         </div>
         
         <div className="flex items-center gap-6">
-          <div className="hidden md:flex items-center gap-2 text-xs font-medium text-slate-400">
-            <Zap className="w-3.5 h-3.5 text-primary fill-primary" />
-            <span>5/5 decodes left</span>
-            <div className="w-24 h-1.5 bg-white/5 rounded-full overflow-hidden ml-2">
-              <div className="w-full h-full bg-primary" />
-            </div>
+          <div className="hidden md:flex items-center gap-2 text-xs font-medium text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full">
+            <Zap className="w-3.5 h-3.5 fill-emerald-500" />
+            <span>Unlimited Access</span>
           </div>
           <button 
             onClick={toggleTheme}
@@ -562,22 +556,6 @@ export function DecoderPage() {
           <div className="mb-4 p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-orange-500 text-xs flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />
             <span>Config Required: Set <strong>VITE_SCAFFOLDER_URL</strong> in your Render dashboard to point to your backend service.</span>
-          </div>
-        )}
-
-        {/* Upgrade Banner - Only show on Decode page */}
-        {activeTab === 'decode' && (
-          <div className="mb-8 p-4 rounded-xl border border-primary/20 bg-primary/5 flex items-center justify-between group cursor-pointer hover:bg-primary/10 transition-colors">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-primary/20 rounded-lg">
-                <Crown className="w-4 h-4 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">Unlock unlimited decodes & all languages</p>
-                <p className="text-xs text-slate-400">Upgrade to Pro for 24/7 priority support and more.</p>
-              </div>
-            </div>
-            <Button variant="outline" size="sm" className="bg-transparent border-white/10 text-white hover:bg-white/5">Upgrade</Button>
           </div>
         )}
 
