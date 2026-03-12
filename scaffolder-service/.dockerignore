@@ -5,5 +5,3 @@ dist
 .git
 .gitignore
 README.md
-Dockerfile
-render.yaml
