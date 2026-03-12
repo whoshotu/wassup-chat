@@ -28,12 +28,16 @@ services:
   envVars:
   - key: VITE_SCAFFOLDER_URL
     value: "REPLACE_ME_WITH_SCAFFOLDER_SERVICE_URL"
-
 - type: web
   name: libretranslate
   runtime: image
   image:
     url: libretranslate/libretranslate:latest
   plan: free
-  # Removed explicit healthCheckPath to let Render use its defaults with longer tolerance.
-  # LibreTranslate boot up can take several minutes on free instances.
+  envVars:
+  - key: LT_UPDATE_MODELS
+    value: "false"
+  - key: LT_LOAD_ONLY
+    value: "en,es,fr,de,it,pt,ja,ko,hi,id,vi,th"
+  # Disable strict health check to allow for slow boot on free tier
+  healthCheckPath: /
