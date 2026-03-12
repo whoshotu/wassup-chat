@@ -2,11 +2,13 @@ services:
 - type: web
   name: scaffolder-service
   runtime: docker
-  dockerfilePath: scaffolder-service/Dockerfile
-  dockerContext: .
+  dockerfilePath: Dockerfile
+  dockerContext: scaffolder-service
   plan: free
   healthCheckPath: /health
   envVars:
+  - key: PORT
+    value: 4000
   - key: LIBRETRANSLATE_URL
     value: "http://libretranslate:5000"
   - key: SCAFFOLDER_API_KEY
