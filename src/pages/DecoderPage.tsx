@@ -21,7 +21,6 @@ import {
   Star,
   LogOut,
   Moon,
-  CheckCircle2,
   Shield,
   HelpCircle
 } from 'lucide-react'
@@ -447,29 +446,54 @@ export function DecoderPage() {
       </Card>
 
       <Card className="border-white/5 bg-[#121216]">
-        <CardHeader className="pb-3">
+        <CardHeader className="pb-3 border-b border-white/10">
           <div className="flex items-center gap-3">
-            <div className="p-3 bg-orange-500/10 rounded-2xl">
-              <AlertCircle className="w-5 h-5 text-orange-500" />
+            <div className="p-3 bg-emerald-500/10 rounded-2xl">
+              <Heart className="w-5 h-5 text-emerald-500" />
             </div>
             <div>
-              <CardTitle className="text-lg font-bold text-white">Setting Boundaries</CardTitle>
-              <CardDescription className="text-slate-500">You have the right to set clear boundaries with your audience.</CardDescription>
+              <CardTitle className="text-lg font-bold text-white">Building Positive Connections</CardTitle>
+              <CardDescription className="text-slate-500">Use this tool to foster better relationships with your international audience.</CardDescription>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-3 pt-4 border-t border-white/5">
+        <CardContent className="space-y-3 pt-6">
           {[
-            'It\'s okay to ignore or block viewers who make you uncomfortable',
-            'You don\'t owe anyone a response, especially to inappropriate messages',
-            'Use platform moderation tools to manage your chat',
-            'Trust your instincts - if something feels wrong, it probably is'
+            'Acknowledge and appreciate viewers who are respectful and supportive',
+            'Learn common greetings in your viewers\' languages',
+            'Cultural differences exist - what\'s friendly in one culture might be different in another',
+            'Building a positive community takes time and consistent boundaries'
           ].map((rule, idx) => (
             <div key={idx} className="flex gap-3 text-sm text-slate-400">
-              <div className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-1.5 shrink-0" />
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0" />
               {rule}
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      <Card className="border-white/5 bg-[#121216]">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-[#0a0a0c] rounded-2xl border border-white/5">
+              <Info className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-bold text-white">About Chat Decoder</CardTitle>
+              <CardDescription className="text-slate-500">This tool is designed to help content creators understand international viewer messages quickly and accurately.</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4 pt-4 border-t border-white/5 text-sm">
+          <p className="text-slate-400">
+            <strong className="text-slate-200">What we do:</strong> We analyze messages to detect language, explain slang, and identify tone to help you respond appropriately.
+          </p>
+          <p className="text-slate-400">
+            <strong className="text-slate-200">What we don't do:</strong> We don't teach languages, translate for replies, or make decisions for you about how to engage with viewers.
+          </p>
+          <p className="text-slate-400">
+            <strong className="text-slate-200">Privacy:</strong> Your decoded messages are stored locally on your device. We don't share your data with third parties.
+          </p>
         </CardContent>
       </Card>
 
