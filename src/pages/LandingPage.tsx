@@ -76,11 +76,73 @@ export default function LandingPage() {
         {/* Mockup Preview */}
         <div className="mt-24 relative max-w-5xl mx-auto animate-in zoom-in duration-1000">
           <div className="absolute inset-0 bg-primary/30 blur-[100px] rounded-full opacity-20" />
-          <div className="relative bg-[#121216] border border-white/10 rounded-3xl p-4 shadow-2xl">
-             <div className="bg-[#0a0a0c] rounded-2xl p-6 min-h-[300px] flex flex-col items-center justify-center text-slate-500 border border-white/5">
-                <MessageSquare className="w-12 h-12 mb-4 opacity-20" />
-                <p>Decoding Interface Preview</p>
-             </div>
+          
+          <div className="relative bg-[#121216]/80 backdrop-blur-xl border border-white/10 rounded-[2rem] p-3 shadow-2xl overflow-hidden">
+            <div className="bg-[#0a0a0c] rounded-[1.5rem] overflow-hidden border border-white/5 flex flex-col md:flex-row">
+              {/* Left Side: Input Mockup */}
+              <div className="w-full md:w-1/2 p-8 border-b md:border-b-0 md:border-r border-white/5 bg-gradient-to-br from-white/[0.02] to-transparent">
+                <div className="flex items-center gap-2 mb-6">
+                  <div className="w-2 h-2 rounded-full bg-red-500/50" />
+                  <div className="w-2 h-2 rounded-full bg-amber-500/50" />
+                  <div className="w-2 h-2 rounded-full bg-emerald-500/50" />
+                  <span className="ml-2 text-[10px] uppercase tracking-widest font-bold text-slate-600">Decoder Input</span>
+                </div>
+                
+                <div className="bg-[#121216] border border-white/5 rounded-2xl p-5 mb-6 shadow-inner">
+                  <p className="text-slate-400 text-sm leading-relaxed italic">
+                    "hola mi amor, te extrañé mucho!! <span className="text-primary font-bold">&lt;3</span>"
+                  </p>
+                </div>
+                
+                <div className="space-y-4 opacity-50">
+                  <div className="h-2 w-1/3 bg-white/5 rounded-full" />
+                  <div className="h-10 w-full bg-primary/20 rounded-xl border border-primary/20 flex items-center justify-center">
+                    <span className="text-xs font-bold text-primary uppercase tracking-tighter">Decoding...</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Side: Result Mockup */}
+              <div className="w-full md:w-1/2 p-8 bg-black/20">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-primary/20 p-1.5 rounded-lg">
+                      <Zap className="w-4 h-4 text-primary" />
+                    </div>
+                    <span className="text-xs font-bold uppercase tracking-widest text-slate-300">Analysis Results</span>
+                  </div>
+                  <div className="flex gap-0.5">
+                    {[1, 2, 3, 4, 5].map((s) => (
+                      <Heart key={s} className="w-4 h-4 fill-primary text-primary" />
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-6">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-2">Translation</span>
+                    <p className="text-xl font-bold text-white leading-tight">
+                      "Hello my love, I missed you so much!!"
+                    </p>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    {['Spanish', 'Flirty', 'Compliment'].map(tag => (
+                      <div key={tag} className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary uppercase tracking-wider">
+                        {tag}
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-6 border-t border-white/5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-3">Suggested Response</span>
+                    <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 text-sm text-slate-300">
+                      "Send a sweet voice note back or a heart emoji."
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
