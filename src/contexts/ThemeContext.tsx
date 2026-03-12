@@ -10,19 +10,28 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: React.ReactNode }) {
+interface ThemeProviderProps {
+  children: React.ReactNode;
+  defaultTheme?: Theme;
+  storageKey?: string;
+}
+
+export function ThemeProvider({ 
+  children, 
+  defaultTheme = 'dark', 
+  storageKey = 'chatDecoder_theme' 
+}: ThemeProviderProps) {
   const [theme, setThemeState] = useState<Theme>(() => {
-    // Default to dark theme
-    const stored = localStorage.getItem('chatDecoder_theme');
-    return (stored as Theme) || 'dark';
+    const stored = localStorage.getItem(storageKey);
+    return (stored as Theme) || defaultTheme;
   });
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
-    localStorage.setItem('chatDecoder_theme', theme);
-  }, [theme]);
+    localStorage.setItem(storageKey, theme);
+  }, [theme, storageKey]);
 
   const toggleTheme = () => {
     setThemeState((prev) => (prev === 'dark' ? 'light' : 'dark'));
