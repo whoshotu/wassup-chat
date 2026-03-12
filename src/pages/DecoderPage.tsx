@@ -14,12 +14,9 @@ import {
   History, 
   Settings, 
   Info,
-  Zap,
-  Crown,
   Sun,
   Search,
   Star,
-  LogOut,
   Moon,
   Shield,
   HelpCircle
@@ -331,34 +328,6 @@ export function DecoderPage() {
         <h2 className="text-xl font-bold text-white">Settings</h2>
       </div>
 
-      {/* Subscription Card */}
-      <Card className="border-white/5 bg-[#121216]">
-        <CardContent className="pt-6 space-y-6">
-          <div className="flex justify-between items-center bg-white/5 p-3 rounded-lg border border-white/5">
-            <div className="flex items-center gap-3 font-semibold text-slate-200">
-              <span className="p-1.5 rounded bg-[#0a0a0c]">🗇</span> Subscription
-            </div>
-            <Badge className="bg-primary text-white border-0 font-bold">Free</Badge>
-          </div>
-
-          <div className="grid gap-3">
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-400">Status</span>
-              <span className="text-emerald-500 font-medium">Active (Free Forever)</span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-400">Decodes</span>
-              <span className="text-emerald-400 font-medium flex items-center gap-1.5">
-                <Zap className="w-3.5 h-3.5 fill-emerald-400" /> Unlimited
-              </span>
-            </div>
-            <div className="flex justify-between items-center text-sm">
-              <span className="text-slate-400">Languages</span>
-              <span className="text-slate-200 font-medium">All Supported</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Appearance */}
       <Card className="border-white/5 bg-[#121216]">
@@ -413,13 +382,6 @@ export function DecoderPage() {
         </CardContent>
       </Card>
 
-      <Button className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold rounded-xl active:scale-[0.98] transition-all">
-        Save Changes
-      </Button>
-
-      <Button variant="ghost" className="w-full text-slate-500 hover:text-white hover:bg-white/5 font-bold gap-2">
-        <LogOut className="w-4 h-4" /> Log Out
-      </Button>
     </div>
   )
 
@@ -533,14 +495,9 @@ export function DecoderPage() {
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold tracking-tight text-white">Wassup</span>
-          <Badge variant="secondary" className="bg-white/10 hover:bg-white/20 text-xs text-white border-0 font-normal ml-1">Free</Badge>
         </div>
         
         <div className="flex items-center gap-6">
-          <div className="hidden md:flex items-center gap-2 text-xs font-medium text-emerald-500 bg-emerald-500/10 px-3 py-1 rounded-full">
-            <Zap className="w-3.5 h-3.5 fill-emerald-500" />
-            <span>Unlimited Access</span>
-          </div>
           <button 
             onClick={toggleTheme}
             className="p-2 hover:bg-white/5 rounded-full transition-colors"
