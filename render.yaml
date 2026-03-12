@@ -19,7 +19,7 @@ services:
     value: "false"
 
 - type: web
-  name: wassup-frontend
+  name: wassup-chat-decoder
   runtime: static
   buildCommand: "npm ci && npm run build"
   staticPublishPath: "dist"

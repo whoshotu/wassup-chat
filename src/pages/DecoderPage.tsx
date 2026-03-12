@@ -494,7 +494,7 @@ export function DecoderPage() {
           <div className="bg-primary p-1.5 rounded-lg shadow-lg shadow-primary/20">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <span className="text-xl font-bold tracking-tight text-white">Wassup</span>
+          <span className="text-xl font-bold tracking-tight text-white gradient-text">Wassup</span>
         </div>
         
         <div className="flex items-center gap-6">
