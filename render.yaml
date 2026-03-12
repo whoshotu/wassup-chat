@@ -18,9 +18,8 @@ services:
   - key: BULK_LANG_GEN
     value: "false"
 
-- type: web
+- type: static
   name: wassup-frontend
-  runtime: static
   buildCommand: "npm ci && npm run build"
   publishPath: "dist"
   routes:
