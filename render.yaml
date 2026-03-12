@@ -3,6 +3,7 @@ services:
   name: scaffolder-service
   runtime: docker
   dockerfilePath: scaffolder-service/Dockerfile
+  dockerContext: scaffolder-service
   plan: free
   envVars:
   - key: LIBRETRANSLATE_URL
