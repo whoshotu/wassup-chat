@@ -1,5 +1,3 @@
-import { translate as trans } from './translate.js';
-import franc from 'franc';
 import franc from 'franc';
 
 // Lightweight language detection (input text -> language)
@@ -146,7 +144,7 @@ export async function generateProject(input = {}, tenantId = '') {
   if (tones.length === 0) tones.push('neutral');
 
   // Vibe score
-  const vibeScore = computeVibeScore(contentToAnalyze, tones.includes('flirty') ? 'friendly' : 'neutral');
+  const vibeScore = computeVibeScore(contentToAnalyze, tones);
 
   // Suggested Responses
   const suggestions = [];
@@ -168,11 +166,11 @@ export async function generateProject(input = {}, tenantId = '') {
   };
 }
 
-function computeVibeScore(text, tone) {
+function computeVibeScore(text, tones) {
   let score = 3.0; // Baseline
   if (text.includes('!')) score += 0.5;
   if (text.includes('?')) score -= 0.2;
-  if (tone === 'friendly') score += 1.0;
+  if (tones.includes('friendly') || tones.includes('flirty') || tones.includes('compliment')) score += 1.0;
   if (text.length > 50) score += 0.3;
   return Math.max(0, Math.min(5, score));
 }
