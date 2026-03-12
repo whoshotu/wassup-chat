@@ -1,28 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 
-export interface SlangItem {
-  term: string;
-  meaning?: string;
-  definition?: string;
-  context?: string;
-  region?: string;
-  notes?: string;
-  formalityLevel?: 'casual' | 'informal' | 'vulgar' | 'neutral';
-}
-
-export interface DecodedMessage {
-  id: string;
-  originalText: string;
-  detectedLanguage: string;
-  region: string;
-  translation: string;
-  plainExplanation: string;
-  slangItems: SlangItem[];
-  toneTags: string[];
-  suggestedResponses: string[];
-  createdAt: string;
-  isFavorite: boolean;
-}
+import { DecodedMessage, SlangItem } from '@/types';
 
 interface MessageHistoryContextType {
   messages: DecodedMessage[];
@@ -52,12 +30,12 @@ export function MessageHistoryProvider({ children }: { children: React.ReactNode
     }
   }, [messages]);
 
-  const addMessage = (message: Omit<DecodedMessage, 'id' | 'timestamp' | 'isFavorite'>) => {
+  const addMessage = (message: Omit<DecodedMessage, 'id' | 'createdAt' | 'favorited'>) => {
     const newMessage: DecodedMessage = {
       ...message,
       id: Date.now().toString(),
-      timestamp: Date.now(),
-      isFavorite: false,
+      createdAt: new Date().toISOString(),
+      favorited: false,
     };
     setMessages((prev) => [newMessage, ...prev]);
   };
@@ -65,7 +43,7 @@ export function MessageHistoryProvider({ children }: { children: React.ReactNode
   const toggleFavorite = (id: string) => {
     setMessages((prev) =>
       prev.map((msg) =>
-        msg.id === id ? { ...msg, isFavorite: !msg.isFavorite } : msg
+        msg.id === id ? { ...msg, favorited: !msg.favorited } : msg
       )
     );
   };
@@ -81,7 +59,7 @@ export function MessageHistoryProvider({ children }: { children: React.ReactNode
   };
 
   const getFavorites = (): DecodedMessage[] => {
-    return messages.filter((msg) => msg.isFavorite);
+    return messages.filter((msg) => msg.favorited);
   };
 
   return (

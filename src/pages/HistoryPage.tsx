@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ToneTag } from '@/components/decoder/ToneTag';
-import { useMessageHistory, DecodedMessage } from '@/contexts/MessageHistoryContext';
+import { useMessageHistory } from '@/contexts/MessageHistoryContext';
+import { DecodedMessage } from '@/types';
 import { Search, Star, Globe, Calendar, X, History } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -111,10 +112,11 @@ export function HistoryPage() {
                       toggleFavorite(message.id);
                     }}
                     className="flex-shrink-0 p-1 -m-1 touch-manipulation"
+                    title="Toggle Favorite"
                   >
                     <Star
                       className={`h-5 w-5 transition-colors ${
-                        message.isFavorite
+                        message.favorited
                           ? 'fill-amber-400 text-amber-400'
                           : 'text-muted-foreground/50 hover:text-muted-foreground'
                       }`}
@@ -150,10 +152,11 @@ export function HistoryPage() {
                   <button
                     onClick={() => toggleFavorite(selectedMessage.id)}
                     className="p-1 touch-manipulation"
+                    title="Toggle Favorite"
                   >
                     <Star
                       className={`h-5 w-5 ${
-                        selectedMessage.isFavorite
+                        selectedMessage.favorited
                           ? 'fill-amber-400 text-amber-400'
                           : 'text-muted-foreground'
                       }`}
@@ -162,6 +165,7 @@ export function HistoryPage() {
                   <button
                     onClick={() => setSelectedMessage(null)}
                     className="p-1 touch-manipulation"
+                    title="Close"
                   >
                     <X className="h-5 w-5 text-muted-foreground" />
                   </button>

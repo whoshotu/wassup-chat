@@ -35,7 +35,7 @@ export interface UserProfile {
 // Slang item with detailed information
 export interface SlangItem {
   term: string;
-  meaning: string;
+  meaning?: string;
   definition?: string;
   context?: string;
   region?: string;

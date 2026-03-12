@@ -1,4 +1,4 @@
-import { SlangItem } from '@/contexts/MessageHistoryContext';
+import { SlangItem } from '@/types';
 
 // Translation result interface
 export interface TranslationResult {

@@ -14,19 +14,20 @@ interface UseHistoryReturn {
   isLoading: boolean;
   
   // Actions
-  refresh: () => void;
-  toggleFavorite: (id: string) => void;
-  deleteMessage: (id: string) => void;
-  search: (query: string) => DecodedMessage[];
-  clearAll: () => void;
+  refresh: () => Promise<void>;
+  toggleFavorite: (id: string) => Promise<void>;
+  deleteMessage: (id: string) => Promise<void>;
+  search: (query: string) => Promise<DecodedMessage[]>;
+  clearAll: () => Promise<void>;
 }
 
 export function useHistory(): UseHistoryReturn {
   const [messages, setMessages] = useState<DecodedMessage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  const refresh = useCallback(() => {
-    setMessages(historyService.getAll());
+  const refresh = useCallback(async () => {
+    const allMessages = await historyService.getAll();
+    setMessages(allMessages);
   }, []);
 
   // Load on mount
@@ -35,24 +36,24 @@ export function useHistory(): UseHistoryReturn {
     setIsLoading(false);
   }, [refresh]);
 
-  const toggleFavorite = useCallback((id: string) => {
-    historyService.toggleFavorite(id);
-    refresh();
+  const toggleFavorite = useCallback(async (id: string) => {
+    await historyService.toggleFavorite(id);
+    await refresh();
   }, [refresh]);
 
-  const deleteMessage = useCallback((id: string) => {
-    historyService.delete(id);
-    refresh();
+  const deleteMessage = useCallback(async (id: string) => {
+    await historyService.delete(id);
+    await refresh();
   }, [refresh]);
 
-  const search = useCallback((query: string): DecodedMessage[] => {
+  const search = useCallback(async (query: string): Promise<DecodedMessage[]> => {
     if (!query.trim()) return messages;
-    return historyService.search(query);
+    return await historyService.search(query);
   }, [messages]);
 
-  const clearAll = useCallback(() => {
-    historyService.clearAll();
-    refresh();
+  const clearAll = useCallback(async () => {
+    await historyService.clearAll();
+    await refresh();
   }, [refresh]);
 
   const favorites = messages.filter(m => m.favorited);

@@ -15,7 +15,7 @@ interface UseDecoderReturn {
   
   // Actions
   decode: (request: DecodeRequest) => Promise<DecodeResponse | null>;
-  saveToHistory: () => DecodedMessage | null;
+  saveToHistory: () => Promise<DecodedMessage | null>;
   clear: () => void;
 }
 
@@ -41,9 +41,9 @@ export function useDecoder(): UseDecoderReturn {
     }
   }, []);
 
-  const saveToHistory = useCallback((): DecodedMessage | null => {
+  const saveToHistory = useCallback(async (): Promise<DecodedMessage | null> => {
     if (!result) return null;
-    return historyService.add(result);
+    return await historyService.add(result);
   }, [result]);
 
   const clear = useCallback(() => {

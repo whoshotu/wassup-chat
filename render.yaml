@@ -1,0 +1,30 @@
+services:
+- type: web
+  name: scaffolder-service
+  dockerfilePath: scaffolder-service/Dockerfile
+  buildCommand: "cd scaffolder-service && npm ci"
+  startCommand: "node scaffolder-service/src/index.js"
+  plan: free
+  envVars:
+  - name: LIBRETRANSLATE_URL
+    value: "http://libretranslate:5000"
+  - name: SCAFFOLDER_API_KEY
+    value: "REDACTED"
+  - name: TENANCY_ENABLED
+    value: "true"
+  - name: BULK_LANG_GEN
+    value: "false"
+
+- type: static_site
+  name: wassup-frontend
+  buildCommand: "npm ci && npm run build"
+  publishPath: "dist"
+  plan: free
+  envVars:
+  - name: VITE_SCAFFOLDER_URL
+    value: "https://scaffolder-service.example.render.com"
+
+- type: web
+  name: libretranslate
+  dockerImage: libretranslate/libretranslate:latest
+  plan: free

@@ -1,4 +1,4 @@
-import { SlangItem } from '@/contexts/MessageHistoryContext';
+import { SlangItem } from '@/types';
 
 // Mock language detection and translation service
 // In production, this would integrate with a real API like Google Translate, DeepL, or OpenAI

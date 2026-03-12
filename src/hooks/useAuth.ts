@@ -32,9 +32,12 @@ export function useAuth(): UseAuthReturn {
 
   // Load user on mount
   useEffect(() => {
-    const currentUser = authService.getCurrentUser();
-    setUser(currentUser);
-    setIsLoading(false);
+    async function loadUser() {
+      const currentUser = await authService.getCurrentUser();
+      setUser(currentUser);
+      setIsLoading(false);
+    }
+    loadUser();
   }, []);
 
   const login = useCallback(async (credentials: AuthCredentials): Promise<boolean> => {

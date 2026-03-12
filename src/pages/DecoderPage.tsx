@@ -134,22 +134,7 @@ export function DecoderPage() {
       </header>
 
       <div className={`flex-1 mx-auto px-3 py-3 w-full ${isOverlay ? 'max-w-full' : 'container max-w-4xl'}`}>
-        {/* Upgrade banner for free users */}
-        {!isPro && (
-          <Card className="p-3 mb-3 bg-primary/5 border-primary/20">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <Crown className="h-4 w-4 text-primary" />
-                <span className="text-sm">Unlock unlimited decodes & all languages</span>
-              </div>
-              <Link to="/pricing">
-                <Button size="sm" variant="outline" className="h-8 text-xs">
-                  Upgrade
-                </Button>
-              </Link>
-            </div>
-          </Card>
-        )}
+        {/* Paywall removed: unlimited decodes and multi-language support available on free plan */}
 
         <div className={`${isNarrow ? 'space-y-3' : 'grid lg:grid-cols-2 gap-4'}`}>
           {/* Input Section */}

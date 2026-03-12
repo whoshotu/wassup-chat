@@ -10,11 +10,11 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import { MessageHistoryProvider } from "./contexts/MessageHistoryContext";
 import { Toaster } from "./components/ui/toaster";
-import { UpgradeModal } from "./components/subscription/UpgradeModal";
 import { useAuth } from "./hooks/useAuth";
 
 // Import pages directly (not lazy) to avoid issues
 import { LandingPage } from "./pages/LandingPage";
+import ScaffoldPage from "./pages/ScaffoldPage";
 import { LoginPage } from "./pages/LoginPage";
 import { SignupPage } from "./pages/SignupPage";
 import { ForgotPasswordPage } from "./pages/ForgotPasswordPage";
@@ -64,6 +64,7 @@ function AppRoutes() {
     <Routes>
       {/* Public routes */}
       <Route path="/" element={<LandingPage />} />
+      <Route path="/scaffold" element={<ScaffoldPage />} />
       <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
       <Route path="/signup" element={<PublicRoute><SignupPage /></PublicRoute>} />
       <Route path="/forgot-password" element={<PublicRoute><ForgotPasswordPage /></PublicRoute>} />
@@ -90,7 +91,6 @@ function App() {
           <MessageHistoryProvider>
             <Suspense fallback={<LoadingSpinner />}>
               <AppRoutes />
-              <UpgradeModal />
               <Toaster />
             </Suspense>
           </MessageHistoryProvider>
