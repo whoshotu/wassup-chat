@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -19,7 +20,8 @@ import {
   Star,
   Moon,
   Shield,
-  HelpCircle
+  HelpCircle,
+  LogOut
 } from 'lucide-react'
 import scaffolder from '@/services/scaffolderService'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -39,6 +41,7 @@ type DecodeResult = {
 }
 
 export function DecoderPage() {
+  const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
   const [inputText, setInputText] = useState('')
   const [outputLang, setOutputLang] = useState('English')
@@ -378,6 +381,30 @@ export function DecoderPage() {
               </SelectContent>
             </Select>
             <p className="text-xs text-slate-500">This is the language you speak and understand</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Account / Logout */}
+      <Card className="border-red-500/10 bg-red-500/5">
+        <CardContent className="py-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-red-500/10 rounded-2xl">
+                <LogOut className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Sign Out</p>
+                <p className="text-xs text-slate-500">End your current session</p>
+              </div>
+            </div>
+            <Button 
+              onClick={() => navigate('/')}
+              variant="outline" 
+              className="border-red-500/20 hover:bg-red-500/10 text-red-500 rounded-xl"
+            >
+              Sign Out
+            </Button>
           </div>
         </CardContent>
       </Card>
