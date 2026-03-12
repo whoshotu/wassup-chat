@@ -2,8 +2,8 @@ services:
 - type: web
   name: scaffolder-service
   runtime: docker
-  dockerfilePath: Dockerfile
-  dockerContext: scaffolder-service
+  dockerfilePath: scaffolder-service/Dockerfile
+  dockerContext: .
   plan: free
   healthCheckPath: /health
   envVars:
