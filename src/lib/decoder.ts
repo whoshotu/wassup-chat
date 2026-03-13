@@ -11,7 +11,7 @@ export interface DecodeResult {
   targetLanguage: string;
   toneTags: string[];
   vibeScore: number;
-  suggestions: string[];
+  suggestions: { source: string; target: string }[];
   status: string;
 }
 
@@ -216,18 +216,35 @@ export async function decodeMessage(text: string, targetLanguage: string = "Engl
   const toneTags = detectTones(text);
   const vibeScore = computeVibeScore(text, toneTags);
 
-  const suggestions: string[] = [];
-  if (toneTags.includes('question')) suggestions.push('Answer the question clearly.');
-  if (toneTags.includes('compliment')) suggestions.push('Say thank you and send a wink.');
-  if (toneTags.includes('flirty')) suggestions.push('Play along and keep it light.');
-  if (toneTags.includes('negative')) suggestions.push('Politely decline or ignore.');
-  if (toneTags.includes('positive') || toneTags.includes('excited')) suggestions.push('Keep the energy up! Maybe ask what they like about the stream?');
-  if (suggestions.length === 0) {
+  const baseSuggestions: string[] = [];
+  if (toneTags.includes('question')) baseSuggestions.push('That is a great question, let me think about it for a second.');
+  if (toneTags.includes('compliment')) baseSuggestions.push('Thank you so much! You are too sweet. 😉');
+  if (toneTags.includes('flirty')) baseSuggestions.push('Oh really? Tell me more... 😏');
+  if (toneTags.includes('negative')) baseSuggestions.push('I appreciate the feedback, but lets keep it positive here.');
+  if (toneTags.includes('positive') || toneTags.includes('excited')) baseSuggestions.push('I love the energy! What is your favorite part so far?');
+  if (baseSuggestions.length === 0) {
     if (sourceLanguage !== targetLanguage) {
-      suggestions.push(`Acknowledge the message in ${sourceLanguage} if you can!`);
+      baseSuggestions.push('Thanks for hanging out! Where are you watching from?');
     } else {
-      suggestions.push('Ask a follow-up question to keep them engaged.');
+      baseSuggestions.push('How is everyone doing today?');
     }
+  }
+
+  // Translate suggestions back to source language
+  const pairedSuggestions: { source: string; target: string }[] = [];
+  for (const suggestion of baseSuggestions) {
+    // target represents the user's language (base text is in English, so we translate English -> Target)
+    const targetText = targetLanguage !== 'English' ? await translateText(suggestion, 'English', targetLanguage) : suggestion;
+    
+    // source represents the input language (base text is in English, so we translate English -> Source)
+    let sourceText = suggestion;
+    if (sourceLanguage !== 'English') {
+      sourceText = await translateText(suggestion, 'English', sourceLanguage);
+    } else if (sourceLanguage === targetLanguage) {
+      sourceText = targetText;
+    }
+    
+    pairedSuggestions.push({ source: sourceText, target: targetText });
   }
 
   return {
@@ -237,7 +254,7 @@ export async function decodeMessage(text: string, targetLanguage: string = "Engl
     targetLanguage,
     toneTags,
     vibeScore,
-    suggestions,
+    suggestions: pairedSuggestions,
     status: 'generated'
   };
 }

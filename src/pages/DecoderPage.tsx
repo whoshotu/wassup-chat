@@ -21,7 +21,9 @@ import {
   Moon,
   Shield,
   HelpCircle,
-  LogOut
+  LogOut,
+  Copy,
+  ArrowRight
 } from 'lucide-react'
 import decoder from '@/lib/decoder'
 import { useTheme } from '@/contexts/ThemeContext'
@@ -35,7 +37,7 @@ type DecodeResult = {
   targetLanguage: string;
   toneTags: string[];
   vibeScore: number;
-  suggestions: string[];
+  suggestions: { source: string; target: string }[];
   timestamp: number;
   error?: string;
 }
@@ -243,8 +245,25 @@ export function DecoderPage() {
                     </h4>
                     <div className="grid gap-2">
                       {result.suggestions.map((s, idx) => (
-                        <div key={idx} className="bg-[#0a0a0c] p-3 rounded-lg text-sm text-slate-300 border border-white/5 hover:border-primary/30 transition-colors cursor-default">
-                          {s}
+                        <div key={idx} className="bg-[#0a0a0c] p-3 rounded-lg border border-white/5 hover:border-primary/30 transition-colors group">
+                          <div className="flex justify-between items-start gap-2 mb-1.5">
+                            <p className="text-sm text-slate-200 font-medium leading-snug">
+                              {s.source}
+                            </p>
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="w-6 h-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10"
+                              onClick={() => navigator.clipboard.writeText(s.source)}
+                              title="Copy Reply"
+                            >
+                              <Copy className="w-3 h-3 text-slate-400" />
+                            </Button>
+                          </div>
+                          <p className="text-[11px] text-slate-500 italic flex items-center gap-1.5 border-t border-white/5 pt-1.5">
+                            <ArrowRight className="w-3 h-3 text-primary/50" />
+                            <span>{s.target}</span>
+                          </p>
                         </div>
                       ))}
                     </div>
