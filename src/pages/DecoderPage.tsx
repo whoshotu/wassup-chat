@@ -57,9 +57,24 @@ export function DecoderPage() {
     if (savedHistory) {
       try { setHistory(JSON.parse(savedHistory)) } catch (e) { console.error(e) }
     }
+    
+    // Determine user's preferred language
     const savedLang = localStorage.getItem('wassup_preferred_lang')
     if (savedLang) {
       setTargetLanguage(savedLang)
+    } else if (typeof navigator !== 'undefined' && navigator.language) {
+      // Auto-detect from device/browser if no preference is saved
+      const langCode = navigator.language.split('-')[0].toLowerCase()
+      const langMap: Record<string, string> = {
+        'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German',
+        'pt': 'Portuguese', 'it': 'Italian', 'ja': 'Japanese', 'ko': 'Korean',
+        'hi': 'Hindi', 'id': 'Indonesian', 'vi': 'Vietnamese', 'th': 'Thai'
+      }
+      if (langMap[langCode]) {
+        setTargetLanguage(langMap[langCode])
+        // Optionally save it back so we don't run detection repeatedly
+        localStorage.setItem('wassup_preferred_lang', langMap[langCode])
+      }
     }
   }, [])
 
