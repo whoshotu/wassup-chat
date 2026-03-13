@@ -27,11 +27,11 @@ export function detectLanguage(text: string = "") {
   if (/[\u0400-\u04FF]/.test(text)) return "Russian";
 
   // Common words/phrases heuristics
-  if (t.includes('hola') || t.includes('gracias') || t.includes('amigo') || t.includes('por favor')) return "Spanish";
-  if (t.includes('bonjour') || t.includes('merci') || t.includes('coucou') || t.includes('ami') || t.includes('vie')) return "French";
+  if (t.includes('hola') || t.includes('gracias') || t.includes('amigo') || t.includes('por favor') || t.includes('de locos')) return "Spanish";
+  if (t.includes('bonjour') || t.includes('merci') || t.includes('coucou') || t.includes('ami') || t.includes('vie') || t.includes('ouf')) return "French";
   if (t.includes('hallo') || t.includes('danke') || t.includes('bitte')) return "German";
   if (t.includes('ciao') || t.includes('amore') || t.includes('grazie') || t.includes('prego')) return "Italian";
-  if (t.includes('olá') || t.includes('oi') || t.includes('obrigado') || t.includes('tudo bem')) return "Portuguese";
+  if (t.includes('olá') || t.includes('oi') || t.includes('obrigado') || t.includes('tudo') || t.includes('quero') || t.includes('bom') || t.includes('jeito')) return "Portuguese";
   if (t.includes('apa kabar') || t.includes('terima kasih') || t.includes('halo')) return "Indonesian";
   
   return "English"; // Fallback
@@ -89,28 +89,76 @@ const DICT: Record<string, Record<string, string>> = {
     'l': 'loss/bad'
   },
   German: { 'hello': 'hallo', 'love': 'liebe', 'friend': 'freund', 'thanks': 'danke', 'please': 'bitte' },
-  Portuguese: { 'hello': 'olá', 'love': 'amor', 'friend': 'amigo', 'thanks': 'obrigado', 'everything': 'tudo' },
+  Portuguese: { 
+    'hello': 'olá', 'love': 'amor', 'friend': 'amigo', 'thanks': 'obrigado', 'everything': 'tudo',
+    'good': 'bom',
+    'so': 'tão',
+    'way': 'jeito',
+    'hurt': 'machucar',
+    'you': 'te',
+    'want': 'quero',
+    'i want to hurt you in such a good way': 'quero te machucar de um jeito tão bom'
+  },
   Italian: { 'hello': 'ciao', 'love': 'amore', 'friend': 'amico', 'thanks': 'grazie', 'please': 'prego' },
 };
 
 export async function translateText(text: string, from: string, to: string): Promise<string> {
   if (!text || from === to) return text;
   
-  // In a real client-side scenario, we might call an external API or use a WASM-based translator.
-  // For now, we use a robust offline fallback that the user can expand.
-  const dicts = [DICT[from], DICT[to], DICT['Internet']].filter(Boolean);
-  let translated = text;
-  
-  for (const dict of dicts) {
-    for (const [en, local] of Object.entries(dict!)) {
-      const wordToFind = to === 'English' ? local : en;
-      const replacement = to === 'English' ? en : local;
-      const re = new RegExp(`\\b${wordToFind.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-      translated = translated.replace(re, replacement);
-    }
+  // 1. First Pass: Apply custom Internet/Slang dictionary (keeps our edge)
+  let preProcessedText = text;
+  for (const [en, local] of Object.entries(DICT['Internet'])) {
+    const regex = new RegExp(`\\b${local.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    preProcessedText = preProcessedText.replace(regex, en);
   }
-  
-  return translated;
+
+  try {
+    // 2. Second Pass: Global Client-Side Translation via Free API (e.g. Google's public endpoint)
+    // Map language names to basic ISO codes
+    const langCodes: Record<string, string> = {
+      'Auto-detect': 'auto', 'English': 'en', 'Spanish': 'es', 'French': 'fr', 'German': 'de',
+      'Portuguese': 'pt', 'Italian': 'it', 'Japanese': 'ja', 'Korean': 'ko',
+      'Hindi': 'hi', 'Indonesian': 'id', 'Vietnamese': 'vi', 'Thai': 'th'
+    };
+    
+    // Default to 'auto' if source language not in our list
+    const sourceCode = langCodes[from] || 'auto';
+    const targetCode = langCodes[to] || 'en';
+
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceCode}&tl=${targetCode}&dt=t&q=${encodeURIComponent(preProcessedText)}`;
+    
+    const response = await fetch(url);
+    if (!response.ok) throw new Error('Translation request failed');
+    
+    const json = await response.json();
+    
+    // Google Translate returns an array of arrays: json[0] is the translated segments
+    let finalTranslation = '';
+    if (json && json[0]) {
+       json[0].forEach((segment: any) => {
+          if (segment[0]) finalTranslation += segment[0];
+       });
+    }
+
+    return finalTranslation || preProcessedText;
+  } catch (error) {
+    console.error('Client-side translation API failed, falling back to basic dictionary:', error);
+    
+    // 3. Fallback: Local Dictionary Loop if API fails (offline mode)
+    const dicts = [DICT[from], DICT[to]].filter(Boolean);
+    let translated = preProcessedText;
+    
+    for (const dict of dicts) {
+      for (const [en, local] of Object.entries(dict!)) {
+        const wordToFind = to === 'English' ? local : en;
+        const replacement = to === 'English' ? en : local;
+        const re = new RegExp(`\\b${wordToFind.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+        translated = translated.replace(re, replacement);
+      }
+    }
+    
+    return translated;
+  }
 }
 
 export function computeVibeScore(text: string, tones: string[]) {
