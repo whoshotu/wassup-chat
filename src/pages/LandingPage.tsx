@@ -122,7 +122,7 @@ export default function LandingPage() {
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-2">Translation</span>
                     <p className="text-xl font-bold text-white leading-tight">
-                      "That's life, my friend! <3"
+                      {"That's life, my friend! <3"}
                     </p>
                   </div>
 
