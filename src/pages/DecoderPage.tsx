@@ -44,22 +44,22 @@ export function DecoderPage() {
   const navigate = useNavigate()
   const { theme, toggleTheme } = useTheme()
   const [inputText, setInputText] = useState('')
-  const [outputLang, setOutputLang] = useState('Auto-detect')
+  const [targetLanguage, setTargetLanguage] = useState('English')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<DecodeResult | null>(null)
   const [activeTab, setActiveTab] = useState('decode')
   const [history, setHistory] = useState<DecodeResult[]>([])
   const [searchQuery, setSearchQuery] = useState('')
 
-  // Load history from localStorage
+  // Load settings and history from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('wassup_history')
-    if (saved) {
-      try {
-        setHistory(JSON.parse(saved))
-      } catch (e) {
-        console.error('Failed to parse history', e)
-      }
+    const savedHistory = localStorage.getItem('wassup_history')
+    if (savedHistory) {
+      try { setHistory(JSON.parse(savedHistory)) } catch (e) { console.error(e) }
+    }
+    const savedLang = localStorage.getItem('wassup_preferred_lang')
+    if (savedLang) {
+      setTargetLanguage(savedLang)
     }
   }, [])
 
@@ -67,6 +67,12 @@ export function DecoderPage() {
   useEffect(() => {
     localStorage.setItem('wassup_history', JSON.stringify(history))
   }, [history])
+
+  // Save preferred language
+  const handleSetTargetLanguage = (lang: string) => {
+    setTargetLanguage(lang)
+    localStorage.setItem('wassup_preferred_lang', lang)
+  }
 
   const languages = [
     'English', 'Spanish', 'French', 'German', 'Portuguese', 'Italian', 'Japanese', 'Korean', 'Hindi', 'Indonesian', 'Vietnamese', 'Thai'
@@ -77,7 +83,7 @@ export function DecoderPage() {
     setLoading(true)
     try {
       // Use local client-side decoder
-      const res = await decoder.decodeMessage(inputText, outputLang === 'Auto-detect' ? 'English' : outputLang)
+      const res = await decoder.decodeMessage(inputText, targetLanguage)
       const newDecode: DecodeResult = {
         ...res,
         id: Math.random().toString(36).substr(2, 9),
@@ -92,7 +98,7 @@ export function DecoderPage() {
         originalText: inputText,
         translatedText: '',
         sourceLanguage: 'Unknown',
-        targetLanguage: outputLang,
+        targetLanguage: targetLanguage,
         toneTags: ['error'],
         vibeScore: 0,
         suggestions: [],
@@ -133,13 +139,12 @@ export function DecoderPage() {
             />
             
             <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Language (Optional)</label>
-              <Select value={outputLang} onValueChange={setOutputLang}>
+              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Translate to</label>
+              <Select value={targetLanguage} onValueChange={handleSetTargetLanguage}>
                 <SelectTrigger className="w-full bg-[#0a0a0c] border-white/5 text-slate-300">
-                  <SelectValue placeholder="Auto-detect" />
+                  <SelectValue placeholder="Select Language" />
                 </SelectTrigger>
                 <SelectContent className="bg-[#121216] border-white/10 text-slate-200">
-                  <SelectItem value="Auto-detect">Auto-detect</SelectItem>
                   {languages.map(l => (
                     <SelectItem key={l} value={l}>{l}</SelectItem>
                   ))}
@@ -362,7 +367,7 @@ export function DecoderPage() {
         <CardContent className="pt-6 space-y-6">
           <div className="space-y-2">
             <label className="text-sm font-bold text-white">Primary Language</label>
-            <Select defaultValue="English">
+            <Select value={targetLanguage} onValueChange={handleSetTargetLanguage}>
               <SelectTrigger className="bg-[#0a0a0c] border-white/10 text-slate-300">
                 <SelectValue />
               </SelectTrigger>
@@ -370,7 +375,7 @@ export function DecoderPage() {
                 {languages.map(l => <SelectItem key={l} value={l}>{l}</SelectItem>)}
               </SelectContent>
             </Select>
-            <p className="text-xs text-slate-500">This is the language you speak and understand</p>
+            <p className="text-xs text-slate-500">This is the language you speak and understand. The decoder will default to this.</p>
           </div>
         </CardContent>
       </Card>
