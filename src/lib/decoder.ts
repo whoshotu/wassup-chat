@@ -27,23 +27,33 @@ export function detectLanguage(text: string = "") {
   if (/[\u0400-\u04FF]/.test(text)) return "Russian";
 
   // Common words/phrases heuristics
-  if (t.includes('hola') || t.includes('gracias') || t.includes('amigo')) return "Spanish";
-  if (t.includes('bonjour') || t.includes('merci') || t.includes('coucou')) return "French";
-  if (t.includes('hallo') || t.includes('danke') || t.includes('bits')) return "German";
-  if (t.includes('ciao') || t.includes('amore') || t.includes('grazie')) return "Italian";
-  if (t.includes('olá') || t.includes('oi') || t.includes('gato')) return "Portuguese";
-  if (t.includes('apa kabar') || t.includes('terima kasih')) return "Indonesian";
+  if (t.includes('hola') || t.includes('gracias') || t.includes('amigo') || t.includes('por favor')) return "Spanish";
+  if (t.includes('bonjour') || t.includes('merci') || t.includes('coucou') || t.includes('ami') || t.includes('vie')) return "French";
+  if (t.includes('hallo') || t.includes('danke') || t.includes('bitte')) return "German";
+  if (t.includes('ciao') || t.includes('amore') || t.includes('grazie') || t.includes('prego')) return "Italian";
+  if (t.includes('olá') || t.includes('oi') || t.includes('obrigado') || t.includes('tudo bem')) return "Portuguese";
+  if (t.includes('apa kabar') || t.includes('terima kasih') || t.includes('halo')) return "Indonesian";
   
   return "English"; // Fallback
 }
 
 // Client-side translation fallback (Lite version)
 const DICT: Record<string, Record<string, string>> = {
-  Spanish: { 'hello': 'hola', 'love': 'amor', 'friend': 'amigo', 'beautiful': 'hermosa', 'thanks': 'gracias' },
-  French: { 'hello': 'bonjour', 'love': 'amour', 'friend': 'ami', 'beautiful': 'belle', 'thanks': 'merci' },
-  German: { 'hello': 'hallo', 'love': 'liebe', 'friend': 'freund', 'thanks': 'danke' },
-  Portuguese: { 'hello': 'olá', 'love': 'amor', 'friend': 'amigo', 'thanks': 'obrigado' },
-  Italian: { 'hello': 'ciao', 'love': 'amore', 'friend': 'amico', 'thanks': 'grazie' },
+  Spanish: { 'hello': 'hola', 'love': 'amor', 'friend': 'amigo', 'beautiful': 'hermosa', 'thanks': 'gracias', 'please': 'por favor', 'how': 'como' },
+  French: { 
+    'hello': 'bonjour', 
+    'love': 'amour', 
+    'friend': 'ami', 
+    'beautiful': 'belle', 
+    'thanks': 'merci', 
+    'life': 'vie', 
+    'this is': "c'est",
+    "that's life": "c'est la vie",
+    "my friend": "mon ami"
+  },
+  German: { 'hello': 'hallo', 'love': 'liebe', 'friend': 'freund', 'thanks': 'danke', 'please': 'bitte' },
+  Portuguese: { 'hello': 'olá', 'love': 'amor', 'friend': 'amigo', 'thanks': 'obrigado', 'everything': 'tudo' },
+  Italian: { 'hello': 'ciao', 'love': 'amore', 'friend': 'amico', 'thanks': 'grazie', 'please': 'prego' },
 };
 
 export async function translateText(text: string, from: string, to: string): Promise<string> {
@@ -99,7 +109,14 @@ export async function decodeMessage(text: string, targetLanguage: string = "Engl
   if (toneTags.includes('compliment')) suggestions.push('Say thank you and send a wink.');
   if (toneTags.includes('flirty')) suggestions.push('Play along and keep it light.');
   if (toneTags.includes('negative')) suggestions.push('Politely decline or ignore.');
-  if (suggestions.length === 0) suggestions.push('Keep the conversation going!');
+  if (toneTags.includes('positive') || toneTags.includes('excited')) suggestions.push('Keep the energy up! Maybe ask what they like about the stream?');
+  if (suggestions.length === 0) {
+    if (sourceLanguage !== targetLanguage) {
+      suggestions.push(`Acknowledge the message in ${sourceLanguage} if you can!`);
+    } else {
+      suggestions.push('Ask a follow-up question to keep them engaged.');
+    }
+  }
 
   return {
     originalText: text,

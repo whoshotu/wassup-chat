@@ -109,7 +109,7 @@ export default function LandingPage() {
                     <div className="bg-primary/20 p-1.5 rounded-lg">
                       <Zap className="w-4 h-4 text-primary" />
                     </div>
-                    <span className="text-xs font-bold uppercase tracking-widest text-slate-300">Analysis Results</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-slate-300">Live Demo</span>
                   </div>
                   <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map((s) => (
@@ -122,12 +122,12 @@ export default function LandingPage() {
                   <div>
                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-2">Translation</span>
                     <p className="text-xl font-bold text-white leading-tight">
-                      "Hello my love, I missed you so much!!"
+                      "That's life, my friend! <3"
                     </p>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
-                    {['Spanish', 'Flirty', 'Compliment'].map(tag => (
+                    {['French', 'Excited', 'Friendly'].map(tag => (
                       <div key={tag} className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-[10px] font-bold text-primary uppercase tracking-wider">
                         {tag}
                       </div>
@@ -137,7 +137,7 @@ export default function LandingPage() {
                   <div className="pt-6 border-t border-white/5">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500 block mb-3">Suggested Response</span>
                     <div className="bg-primary/5 border border-primary/10 rounded-xl p-3 text-sm text-slate-300">
-                      "Send a sweet voice note back or a heart emoji."
+                      "Keep the energy up! Maybe ask what they like about the stream?"
                     </div>
                   </div>
                 </div>

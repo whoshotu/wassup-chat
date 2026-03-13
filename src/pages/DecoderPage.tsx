@@ -181,7 +181,7 @@ export function DecoderPage() {
                     <Badge variant="secondary" className="bg-primary/20 text-primary border-0 text-[10px] font-bold uppercase tracking-tighter px-1.5 h-4">
                       {result.sourceLanguage}
                     </Badge>
-                    <CardTitle className="text-sm font-medium text-slate-400">Interpretation</CardTitle>
+                    <CardTitle className="text-sm font-medium text-slate-400">Translation & Analysis</CardTitle>
                   </div>
                   <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map((s) => (
@@ -200,9 +200,12 @@ export function DecoderPage() {
                     <p className="text-2xl font-semibold text-white leading-tight">
                       {result.translatedText}
                     </p>
-                    <p className="text-sm text-slate-500 italic">
-                      "{result.originalText}"
-                    </p>
+                    <div className="pt-2">
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600 block mb-1">Original Message</span>
+                      <p className="text-sm text-slate-500 italic">
+                        "{result.originalText}"
+                      </p>
+                    </div>
                   </div>
 
                   <div className="flex flex-wrap gap-2">
