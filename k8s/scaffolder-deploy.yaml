@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scaffolder-service
+  labels:
+    app: scaffolder-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: scaffolder-service
+  template:
+    metadata:
+      labels:
+        app: scaffolder-service
+    spec:
+      containers:
+        - name: scaffolder-service
+          image: myregistry/wassup-scaffolder-service:latest
+          ports:
+            - containerPort: 4000
+          env:
+            - name: LIBRETRANSLATE_URL
+              value: http://libretranslate:5000
+            - name: SCAFFOLDER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scaffolder-api-key
+                  key: key
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 4000
+            initialDelaySeconds: 5
+            periodSeconds: 10
