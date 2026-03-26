@@ -88,7 +88,6 @@ const DICT: Record<string, Record<string, string>> = {
     'w': 'win/great',
     'l': 'loss/bad'
   },
-  German: { 'hello': 'hallo', 'love': 'liebe', 'friend': 'freund', 'thanks': 'danke', 'please': 'bitte' },
   Portuguese: { 
     'hello': 'olá', 'love': 'amor', 'friend': 'amigo', 'thanks': 'obrigado', 'everything': 'tudo',
     'good': 'bom',
@@ -100,6 +99,10 @@ const DICT: Record<string, Record<string, string>> = {
     'i want to hurt you in such a good way': 'quero te machucar de um jeito tão bom'
   },
   Italian: { 'hello': 'ciao', 'love': 'amore', 'friend': 'amico', 'thanks': 'grazie', 'please': 'prego' },
+  German: { 
+    'hello': 'hallo', 'love': 'liebe', 'friend': 'freund', 'thanks': 'danke', 'please': 'bitte',
+    'moin': 'hello/hi', 'wichser': 'jerk/wanker', 'da': 'there', 'morgen': 'morning' 
+  }
 };
 
 // Pre-compile Regexes for performance
@@ -108,8 +111,13 @@ const compiledInternetDict = Object.entries(DICT['Internet']).map(([slang, meani
   meaning
 }));
 
-export async function translateText(text: string, from: string, to: string, customDict: Record<string, string> = {}): Promise<string> {
-  if (!text) return text;
+export interface TranslationResult {
+  translatedText: string;
+  detectedSource: string;
+}
+
+export async function translateText(text: string, from: string, to: string, customDict: Record<string, string> = {}): Promise<TranslationResult> {
+  if (!text) return { translatedText: text, detectedSource: from === 'Auto-detect' ? 'Unknown' : from };
   
   let preProcessedText = text;
   
@@ -134,6 +142,12 @@ export async function translateText(text: string, from: string, to: string, cust
       'Czech': 'cs', 'Danish': 'da', 'Dutch': 'nl', 'Finnish': 'fi', 'Greek': 'el',
       'Hungarian': 'hu', 'Norwegian': 'no', 'Polish': 'pl', 'Romanian': 'ro',
       'Russian': 'ru', 'Slovak': 'sk', 'Swedish': 'sv', 'Turkish': 'tr', 'Ukrainian': 'uk'
+    };
+
+    const REVERSE_LANG_MAP: Record<string, string> = {
+      'en': 'English', 'es': 'Spanish', 'fr': 'French', 'de': 'German', 'pt': 'Portuguese',
+      'it': 'Italian', 'ja': 'Japanese', 'ko': 'Korean', 'ru': 'Russian', 'zh-CN': 'Chinese',
+      'ar': 'Arabic', 'hi': 'Hindi', 'id': 'Indonesian'
     };
     
     const sourceCode = langCodes[from] || 'auto';
@@ -162,6 +176,9 @@ export async function translateText(text: string, from: string, to: string, cust
 
     const json = await response.json();
     let finalTranslation = '';
+    let detectedSrc = 'en';
+
+    if (json.src) detectedSrc = json.src;
     
     // Handle both standard and dj=1 response formats
     if (json.sentences) {
@@ -170,7 +187,12 @@ export async function translateText(text: string, from: string, to: string, cust
         json[0].forEach((segment: any) => { if (segment[0]) finalTranslation += segment[0]; });
     }
 
-    return finalTranslation || preProcessedText;
+    const detectedLangName = REVERSE_LANG_MAP[detectedSrc] || detectedSrc;
+
+    return { 
+      translatedText: finalTranslation || preProcessedText, 
+      detectedSource: detectedLangName 
+    };
   } catch (error) {
     console.error('Client-side translation API failed, falling back to basic dictionary:', error);
     
@@ -187,7 +209,10 @@ export async function translateText(text: string, from: string, to: string, cust
       }
     }
     
-    return translated;
+    return { 
+      translatedText: translated, 
+      detectedSource: from === 'Auto-detect' ? 'Unknown' : from 
+    };
   }
 }
 
@@ -241,41 +266,49 @@ export function detectTones(text: string): string[] {
 }
 
 export async function decodeMessage(text: string, targetLanguage: string = "English", customDict: Record<string, string> = {}): Promise<DecodeResult> {
-  // Use local detection for tone analysis, but trust Google API for the actual translation path
-  const detectedSource = detectLanguage(text);
-  const translatedText = await translateText(text, 'Auto-detect', targetLanguage, customDict);
+  const { translatedText, detectedSource } = await translateText(text, 'Auto-detect', targetLanguage, customDict);
+  
   const toneTags = detectTones(text);
   const vibeScore = computeVibeScore(text, toneTags);
 
   const baseSuggestions: string[] = [];
-  if (toneTags.includes('question')) baseSuggestions.push('That is a great question, let me think about it for a second.');
-  if (toneTags.includes('compliment')) baseSuggestions.push('Thank you so much! You are too sweet. 😉');
-  if (toneTags.includes('flirty')) baseSuggestions.push('Oh really? Tell me more... 😏');
-  if (toneTags.includes('negative')) baseSuggestions.push('I appreciate the feedback, but lets keep it positive here.');
-  if (toneTags.includes('positive') || toneTags.includes('excited')) baseSuggestions.push('I love the energy! What is your favorite part so far?');
+  if (toneTags.includes('question')) {
+    baseSuggestions.push('Good question! Let me check on that.');
+    baseSuggestions.push('I am not entirely sure, what do you think?');
+  }
+  if (toneTags.includes('compliment')) {
+    baseSuggestions.push('Thank you! You are so kind.');
+    baseSuggestions.push('Aww, thanks! That made my day.');
+  }
+  if (toneTags.includes('flirty')) {
+    baseSuggestions.push('You are making me blush! 😉');
+    baseSuggestions.push('Is that so? Tell me more... 😏');
+  }
+  if (toneTags.includes('hype')) {
+    baseSuggestions.push('Let\'s goooo! 🔥');
+    baseSuggestions.push('The energy is amazing today!');
+  }
+  
   if (baseSuggestions.length === 0) {
-    if (detectedSource !== targetLanguage) {
-      baseSuggestions.push('Thanks for hanging out! Where are you watching from?');
-    } else {
-      baseSuggestions.push('How is everyone doing today?');
-    }
+    baseSuggestions.push('Hello! How are you doing?');
+    baseSuggestions.push('Thanks for being here!');
   }
 
-  // Translate suggestions back to source language
+  // Translate suggestions back to detected source language
   const pairedSuggestions: { source: string; target: string }[] = [];
   for (const suggestion of baseSuggestions) {
-    // target represents the user's language (base text is in English, so we translate English -> Target)
-    const targetText = targetLanguage !== 'English' ? await translateText(suggestion, 'English', targetLanguage) : suggestion;
+    // target represents the user's language (English usually)
+    const userLangText = targetLanguage !== 'English' ? (await translateText(suggestion, 'English', targetLanguage)).translatedText : suggestion;
     
-    // source represents the input language (base text is in English, so we translate English -> Source)
-    let sourceText = suggestion;
+    // source represents the original input language (e.g. Spanish)
+    let originalLangText = suggestion;
     if (detectedSource !== 'English') {
-      sourceText = await translateText(suggestion, 'English', detectedSource);
+      originalLangText = (await translateText(suggestion, 'English', detectedSource)).translatedText;
     } else if (detectedSource === targetLanguage) {
-      sourceText = targetText;
+      originalLangText = userLangText;
     }
     
-    pairedSuggestions.push({ source: sourceText, target: targetText });
+    pairedSuggestions.push({ source: originalLangText, target: userLangText });
   }
 
   return {
