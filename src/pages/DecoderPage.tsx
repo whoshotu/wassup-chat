@@ -92,7 +92,11 @@ export function DecoderPage() {
   }
 
   const languages = [
-    'English', 'Spanish', 'French', 'German', 'Portuguese', 'Italian', 'Japanese', 'Korean', 'Hindi', 'Indonesian', 'Vietnamese', 'Thai'
+    "Arabic", "Bengali", "Bulgarian", "Chinese", "Czech", "Danish", "Dutch", 
+    "English", "Finnish", "French", "German", "Greek", "Hindi", "Hungarian", 
+    "Indonesian", "Italian", "Japanese", "Korean", "Norwegian", "Polish", 
+    "Portuguese", "Romanian", "Russian", "Slovak", "Spanish", "Swedish", 
+    "Thai", "Turkish", "Ukrainian", "Vietnamese"
   ]
 
   async function handleDecode() {

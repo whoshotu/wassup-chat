@@ -102,37 +102,54 @@ const DICT: Record<string, Record<string, string>> = {
   Italian: { 'hello': 'ciao', 'love': 'amore', 'friend': 'amico', 'thanks': 'grazie', 'please': 'prego' },
 };
 
-export async function translateText(text: string, from: string, to: string): Promise<string> {
-  if (!text || from === to) return text;
+// Pre-compile Regexes for performance
+const compiledInternetDict = Object.entries(DICT['Internet']).map(([slang, meaning]) => ({
+  regex: new RegExp(`\\b${slang.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi'),
+  meaning
+}));
+
+export async function translateText(text: string, from: string, to: string, customDict: Record<string, string> = {}): Promise<string> {
+  if (!text) return text;
   
-  // 1. First Pass: Apply custom Internet/Slang dictionary (keeps our edge)
   let preProcessedText = text;
-  for (const [en, local] of Object.entries(DICT['Internet'])) {
-    const regex = new RegExp(`\\b${local.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-    preProcessedText = preProcessedText.replace(regex, en);
+  
+  // 0. Pass: Apply User-Defined Custom CRUD Dictionary
+  for (const [slang, translation] of Object.entries(customDict)) {
+    const regex = new RegExp(`\\b${slang.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    preProcessedText = preProcessedText.replace(regex, translation);
+  }
+  
+  // 1. First Pass: Apply pre-compiled Internet/Slang dictionary (Slang -> Clear English)
+  for (const item of compiledInternetDict) {
+    preProcessedText = preProcessedText.replace(item.regex, item.meaning);
   }
 
   try {
-    // 2. Second Pass: Global Client-Side Translation via Free API (e.g. Google's public endpoint)
-    // Map language names to basic ISO codes
+    // 2. Second Pass: Global Client-Side Translation via Google API
     const langCodes: Record<string, string> = {
       'Auto-detect': 'auto', 'English': 'en', 'Spanish': 'es', 'French': 'fr', 'German': 'de',
       'Portuguese': 'pt', 'Italian': 'it', 'Japanese': 'ja', 'Korean': 'ko',
-      'Hindi': 'hi', 'Indonesian': 'id', 'Vietnamese': 'vi', 'Thai': 'th'
+      'Hindi': 'hi', 'Indonesian': 'id', 'Vietnamese': 'vi', 'Thai': 'th',
+      'Arabic': 'ar', 'Bengali': 'bn', 'Bulgarian': 'bg', 'Chinese': 'zh-CN',
+      'Czech': 'cs', 'Danish': 'da', 'Dutch': 'nl', 'Finnish': 'fi', 'Greek': 'el',
+      'Hungarian': 'hu', 'Norwegian': 'no', 'Polish': 'pl', 'Romanian': 'ro',
+      'Russian': 'ru', 'Slovak': 'sk', 'Swedish': 'sv', 'Turkish': 'tr', 'Ukrainian': 'uk'
     };
     
-    // Default to 'auto' if source language not in our list
     const sourceCode = langCodes[from] || 'auto';
     const targetCode = langCodes[to] || 'en';
 
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceCode}&tl=${targetCode}&dt=t&q=${encodeURIComponent(preProcessedText)}`;
+    // Use POST to avoid URL length limits on large batches/messages
+    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceCode}&tl=${targetCode}&dt=t`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ q: preProcessedText })
+    });
     
-    const response = await fetch(url);
     if (!response.ok) throw new Error('Translation request failed');
-    
     const json = await response.json();
     
-    // Google Translate returns an array of arrays: json[0] is the translated segments
     let finalTranslation = '';
     if (json && json[0]) {
        json[0].forEach((segment: any) => {
@@ -210,9 +227,10 @@ export function detectTones(text: string): string[] {
   return tones;
 }
 
-export async function decodeMessage(text: string, targetLanguage: string = "English"): Promise<DecodeResult> {
-  const sourceLanguage = detectLanguage(text);
-  const translatedText = await translateText(text, sourceLanguage, targetLanguage);
+export async function decodeMessage(text: string, targetLanguage: string = "English", customDict: Record<string, string> = {}): Promise<DecodeResult> {
+  // Use local detection for tone analysis, but trust Google API for the actual translation path
+  const detectedSource = detectLanguage(text);
+  const translatedText = await translateText(text, 'Auto-detect', targetLanguage, customDict);
   const toneTags = detectTones(text);
   const vibeScore = computeVibeScore(text, toneTags);
 
@@ -223,7 +241,7 @@ export async function decodeMessage(text: string, targetLanguage: string = "Engl
   if (toneTags.includes('negative')) baseSuggestions.push('I appreciate the feedback, but lets keep it positive here.');
   if (toneTags.includes('positive') || toneTags.includes('excited')) baseSuggestions.push('I love the energy! What is your favorite part so far?');
   if (baseSuggestions.length === 0) {
-    if (sourceLanguage !== targetLanguage) {
+    if (detectedSource !== targetLanguage) {
       baseSuggestions.push('Thanks for hanging out! Where are you watching from?');
     } else {
       baseSuggestions.push('How is everyone doing today?');
@@ -238,9 +256,9 @@ export async function decodeMessage(text: string, targetLanguage: string = "Engl
     
     // source represents the input language (base text is in English, so we translate English -> Source)
     let sourceText = suggestion;
-    if (sourceLanguage !== 'English') {
-      sourceText = await translateText(suggestion, 'English', sourceLanguage);
-    } else if (sourceLanguage === targetLanguage) {
+    if (detectedSource !== 'English') {
+      sourceText = await translateText(suggestion, 'English', detectedSource);
+    } else if (detectedSource === targetLanguage) {
       sourceText = targetText;
     }
     
@@ -250,7 +268,7 @@ export async function decodeMessage(text: string, targetLanguage: string = "Engl
   return {
     originalText: text,
     translatedText,
-    sourceLanguage,
+    sourceLanguage: detectedSource,
     targetLanguage,
     toneTags,
     vibeScore,
