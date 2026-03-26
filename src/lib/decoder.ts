@@ -139,22 +139,35 @@ export async function translateText(text: string, from: string, to: string, cust
     const sourceCode = langCodes[from] || 'auto';
     const targetCode = langCodes[to] || 'en';
 
-    // Use POST to avoid URL length limits on large batches/messages
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceCode}&tl=${targetCode}&dt=t`;
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({ q: preProcessedText })
-    });
+    // Hybrid Strategy: Use GET for short strings (more reliable), POST for long ones.
+    const isLong = preProcessedText.length > 1500;
+    const baseUrl = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceCode}&tl=${targetCode}&dt=t&dj=1&ie=UTF-8&oe=UTF-8`;
     
-    if (!response.ok) throw new Error('Translation request failed');
+    let response;
+    if (!isLong) {
+      const getUrl = `${baseUrl}&q=${encodeURIComponent(preProcessedText)}`;
+      response = await fetch(getUrl);
+    } else {
+      response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ q: preProcessedText })
+      });
+    }
+    
+    if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`API returned ${response.status}: ${errorText.substring(0, 100)}`);
+    }
+
     const json = await response.json();
-    
     let finalTranslation = '';
-    if (json && json[0]) {
-       json[0].forEach((segment: any) => {
-          if (segment[0]) finalTranslation += segment[0];
-       });
+    
+    // Handle both standard and dj=1 response formats
+    if (json.sentences) {
+        json.sentences.forEach((s: any) => { if (s.trans) finalTranslation += s.trans; });
+    } else if (json[0]) {
+        json[0].forEach((segment: any) => { if (segment[0]) finalTranslation += segment[0]; });
     }
 
     return finalTranslation || preProcessedText;
