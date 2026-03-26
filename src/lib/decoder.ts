@@ -294,19 +294,22 @@ export async function decodeMessage(text: string, targetLanguage: string = "Engl
     baseSuggestions.push('Thanks for being here!');
   }
 
-  // Translate suggestions back to detected source language
+  // Translate suggestions: 
+  // 1. To User's Preferred Language (for the label)
+  // 2. To Detected Source Language (for the copy-to-paste text)
   const pairedSuggestions: { source: string; target: string }[] = [];
   for (const suggestion of baseSuggestions) {
-    // target represents the user's language (English usually)
+    // target represents the user's language (e.g. Spanish)
     const userLangText = targetLanguage !== 'English' ? (await translateText(suggestion, 'English', targetLanguage)).translatedText : suggestion;
     
-    // source represents the original input language (e.g. Spanish)
+    // source represents the original input language (e.g. German)
     let originalLangText = suggestion;
-    if (detectedSource !== 'English') {
-      originalLangText = (await translateText(suggestion, 'English', detectedSource)).translatedText;
-    } else if (detectedSource === targetLanguage) {
+    if (detectedSource === targetLanguage) {
       originalLangText = userLangText;
-    }
+    } else if (detectedSource !== 'English') {
+      // Use the user's language version as the pivot if possible, or stick to English pivot for accuracy
+      originalLangText = (await translateText(suggestion, 'English', detectedSource)).translatedText;
+    } 
     
     pairedSuggestions.push({ source: originalLangText, target: userLangText });
   }
