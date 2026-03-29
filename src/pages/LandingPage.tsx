@@ -31,6 +31,13 @@ export default function LandingPage() {
             Sign In
           </Button>
           <Button 
+            variant="ghost" 
+            className="hidden md:flex text-purple-400 hover:text-purple-300 hover:bg-purple-500/10 font-bold"
+            onClick={() => window.open('https://ko-fi.com/anthonylopez74414', '_blank')}
+          >
+            Upgrade to Pro
+          </Button>
+          <Button 
             className="bg-primary hover:bg-primary/90 text-white rounded-xl px-6"
             onClick={() => navigate("/decoder")}
           >
@@ -43,7 +50,12 @@ export default function LandingPage() {
       <section className="relative z-10 pt-20 pb-32 px-6 max-w-7xl mx-auto text-center">
         <div className="inline-flex items-center gap-2 bg-primary/10 border border-primary/20 rounded-full px-4 py-1.5 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <Sparkles className="w-4 h-4 text-primary" />
-          <span className="text-xs font-bold uppercase tracking-widest text-primary">Truly Free & Unlimited</span>
+          <span className="text-xs font-bold uppercase tracking-widest text-primary">Truly Free Decoder & Pro Extension Now Available</span>
+        </div>
+
+        <div className="inline-flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 rounded-full px-4 py-1.5 mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500 delay-150">
+          <Globe className="w-4 h-4 text-purple-400" />
+          <span className="text-xs font-bold uppercase tracking-widest text-purple-400">Universal Pro Mode: $20/mo</span>
         </div>
         
         <h1 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8 leading-[1.1] animate-in fade-in slide-in-from-bottom-6 duration-700">
@@ -142,6 +154,74 @@ export default function LandingPage() {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Extension Section */}
+      <section className="relative z-10 py-32 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div className="order-2 lg:order-1">
+              <div className="inline-flex items-center gap-2 bg-purple-500/10 border border-purple-500/20 rounded-full px-4 py-1.5 mb-6">
+                <Shield className="w-4 h-4 text-purple-400" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-purple-400">The Ultimate Upgrade</span>
+              </div>
+              <h2 className="text-4xl md:text-6xl font-bold tracking-tight mb-6">
+                Universal Pro <span className="text-purple-400">Browser Extension.</span>
+              </h2>
+              <p className="text-slate-400 text-lg mb-8 leading-relaxed max-w-xl">
+                Stop copying and pasting. Get real-time, 1-click decoding integrated directly into any website. Perfect for Discord, Twitter, Chaturbate, and more.
+              </p>
+              
+              <ul className="space-y-4 mb-10">
+                {[
+                  "Deep Context Gemini AI Integration",
+                  "Universal Mode for 180+ websites",
+                  "Real-time Smart Suggestions",
+                  "Grammar Correction & Context Sensing"
+                ].map((item, i) => (
+                  <li key={i} className="flex items-center gap-3">
+                    <div className="bg-purple-500/20 p-1 rounded-full">
+                      <Zap className="w-3.5 h-3.5 text-purple-400" fill="currentColor" />
+                    </div>
+                    <span className="font-semibold text-slate-300">{item}</span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Button 
+                  size="lg"
+                  className="h-14 px-10 bg-purple-600 hover:bg-purple-500 text-white rounded-2xl text-lg font-bold shadow-xl shadow-purple-500/20 transition-all hover:scale-[1.02]"
+                  onClick={() => window.open('https://ko-fi.com/anthonylopez74414', '_blank')}
+                >
+                  Get Pro for $20/mo
+                </Button>
+                <div className="flex items-center gap-2 px-4 py-2 bg-white/5 border border-white/10 rounded-2xl">
+                    <img src="/extension-icon.png" alt="Extension" className="w-8 h-8" />
+                    <div className="text-left">
+                        <p className="text-[10px] font-bold text-slate-500 uppercase">Available for</p>
+                        <p className="text-xs font-bold text-white">Chrome & Brave</p>
+                    </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="order-1 lg:order-2 relative h-[400px] md:h-[600px] flex items-center justify-center">
+                <div className="absolute inset-0 bg-purple-500/30 blur-[120px] rounded-full opacity-30" />
+                <div className="relative w-72 h-72 md:w-96 md:h-96">
+                    <div className="absolute inset-0 bg-gradient-to-br from-purple-600 to-indigo-900 rounded-[3rem] shadow-2xl animate-pulse duration-[4000ms]" />
+                    <div className="absolute inset-4 bg-[#0a0a0c] rounded-[2rem] border border-white/10 flex flex-col items-center justify-center p-8 text-center">
+                        <img src="/extension-icon.png" alt="Extension Logo" className="w-24 h-24 mb-6 drop-shadow-[0_0_20px_rgba(168,85,247,0.5)]" />
+                        <h3 className="text-2xl font-bold mb-2">Unleash Pro</h3>
+                        <p className="text-sm text-slate-400">1-Click Decoding Everywhere</p>
+                        <div className="mt-8 py-2 px-4 bg-purple-500/20 rounded-full border border-purple-500/30 text-purple-400 text-xs font-bold">
+                            API ACTIVE
+                        </div>
+                    </div>
+                </div>
             </div>
           </div>
         </div>

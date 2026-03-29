@@ -148,22 +148,27 @@ export function DecoderPage() {
       {/* Input Section */}
       <div className="space-y-6">
         
-        {/* Upsell Banner */}
-        <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-500/10 via-purple-500/10 to-pink-500/10 border border-purple-500/20 shadow-inner">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h3 className="text-purple-400 font-bold text-sm mb-1 flex items-center gap-2">
-                <Sparkles className="w-4 h-4" /> Go Pro: Auto-Translate Extension
-              </h3>
-              <p className="text-slate-300 text-xs leading-relaxed max-w-[280px]">
-                Tired of copy-pasting? Get our Chrome Extension that automatically translates Chaturbate messages in real-time.
+        {/* Premium Pro Upsell Card */}
+        <div className="relative overflow-hidden p-6 rounded-2xl bg-[#121216] border border-purple-500/30 shadow-2xl group">
+          <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-transparent opacity-50" />
+          <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
+            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-3 rounded-2xl shadow-lg shadow-purple-500/20 transform group-hover:scale-110 transition-transform duration-500">
+                <img src="/extension-icon.png" alt="Pro Icon" className="w-12 h-12 drop-shadow-md" />
+            </div>
+            <div className="flex-1 text-center md:text-left">
+              <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
+                <h3 className="text-white font-bold text-lg tracking-tight">Wassup Pro Extension</h3>
+                <Badge className="bg-purple-500 text-white border-0 text-[10px] font-black px-2 h-4">$20/MO</Badge>
+              </div>
+              <p className="text-slate-400 text-xs leading-relaxed max-w-sm">
+                Get the <span className="text-purple-400 font-bold">Universal Decoder</span>. Real-time, 1-click translations on Twitter, Discord, and any cam site. 
               </p>
             </div>
             <Button 
               onClick={() => window.open('https://ko-fi.com/anthonylopez74414', '_blank')}
-              className="bg-purple-500 hover:bg-purple-600 text-white text-xs font-bold shrink-0 shadow-lg shadow-purple-500/20"
+              className="w-full md:w-auto bg-purple-600 hover:bg-purple-500 text-white px-8 h-12 rounded-xl font-bold shadow-xl shadow-purple-500/20 transition-all hover:translate-y-[-2px] active:translate-y-0"
             >
-              Get it on Ko-fi
+              Get Pro Now
             </Button>
           </div>
         </div>
@@ -582,9 +587,9 @@ export function DecoderPage() {
           <Button 
             onClick={() => window.open('https://ko-fi.com/anthonylopez74414', '_blank')}
             variant="outline"
-            className="hidden sm:flex h-8 bg-[#121216] border-purple-500/30 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 text-xs font-bold rounded-full px-4"
+            className="hidden sm:flex h-8 bg-[#121216] border-purple-500/50 text-purple-400 hover:bg-purple-500/10 hover:text-purple-300 text-xs font-bold rounded-full px-4"
           >
-            Upgrade to Pro
+            Get Pro Extension - $20
           </Button>
           <button 
             onClick={toggleTheme}

@@ -102,6 +102,14 @@ const DICT: Record<string, Record<string, string>> = {
   German: { 
     'hello': 'hallo', 'love': 'liebe', 'friend': 'freund', 'thanks': 'danke', 'please': 'bitte',
     'moin': 'hello/hi', 'wichser': 'jerk/wanker', 'da': 'there', 'morgen': 'morning' 
+  },
+  Slang: {
+    'tokens': 'currency used for tips', 'menu': 'list of prices/services', 'pvt': 'private show',
+    'snap': 'snapchat contact', 'of': 'onlyfans link', 'ig': 'instagram handle',
+    'tks': 'thanks', 'thx': 'thanks', 'u': 'you', 'r': 'are', 'nudes': 'naked photos',
+    'cum': 'orgasm/finish', 'dck': 'penis', 'pusy': 'vagina', 'ass': 'butt',
+    'show': 'perform/display', 'dance': 'move to music', 'stand up': 'get on feet',
+    'tip': 'give currency', 'goal': 'target amount', 'lush': ' Lovense toy'
   }
 };
 
@@ -249,14 +257,25 @@ export function detectTones(text: string): string[] {
   // Gratitude / Support
   if (lower.includes('please') || lower.includes('thanks') || lower.includes('thank you') || lower.includes('gg') || lower.includes('nice stream')) tones.push('supportive');
   
-  // Flirty / Compliments
-  if (lower.includes('love') || lower.includes('beautiful') || lower.includes('sexy') || lower.includes('hot') || lower.includes('baby') || lower.includes('sweetie')) {
+  // Flirty / Compliments / Sexual
+  if (lower.includes('love') || lower.includes('beautiful') || lower.includes('sexy') || lower.includes('hot') || lower.includes('baby') || lower.includes('sweetie') || lower.includes('cute') || lower.includes('pretty')) {
      if (lower.includes('baby') || lower.includes('sweetie') || lower.includes('honey')) tones.push('flirty');
      else tones.push('compliment');
   }
   
+  if (lower.includes('ass') || lower.includes('pusy') || lower.includes('dck') || lower.includes('nudes') || lower.includes('horny')) tones.push('sexual');
+
+  // Logistics / Information
+  if (lower.includes('old') || lower.includes('from') || lower.includes('where') || lower.includes('location') || lower.includes('age') || lower.includes('name')) tones.push('info_query');
+
+  // Financials / Business
+  if (lower.includes('how much') || lower.includes('cost') || lower.includes('price') || lower.includes('menu') || lower.includes('tokens') || lower.includes('pvt')) tones.push('business_query');
+
+  // Actions / Demands
+  if (lower.includes('show') || lower.includes('dance') || lower.includes('stand up') || lower.includes('move') || lower.includes('play')) tones.push('action_request');
+
   // Negative / Aggressive
-  if (lower.includes('fuck') || lower.includes('shit') || lower.includes('hate') || lower.includes('bad') || lower.includes('stop')) tones.push('negative');
+  if (lower.includes('fuck') || lower.includes('shit') || lower.includes('hate') || lower.includes('bad') || lower.includes('stop') || lower.includes('dumb')) tones.push('negative');
   
   // Sarcastic (Heuristics)
   if (lower.includes('yeah right') || lower.includes('sure buddy') || lower.includes('okay lol') || lower.includes('nice try')) tones.push('sarcastic');
@@ -287,6 +306,22 @@ export async function decodeMessage(text: string, targetLanguage: string = "Engl
   if (toneTags.includes('hype')) {
     baseSuggestions.push('Let\'s goooo! 🔥');
     baseSuggestions.push('The energy is amazing today!');
+  }
+  if (toneTags.includes('info_query')) {
+    baseSuggestions.push('I\'m from a secret place, can you guess? 🤫');
+    baseSuggestions.push('I prefer to keep that private for now, but I\'m friendly!');
+  }
+  if (toneTags.includes('business_query')) {
+    baseSuggestions.push('Check out my menu below for all my prices! 💖');
+    baseSuggestions.push('I can do a private for the right amount of tokens! 😉');
+  }
+  if (toneTags.includes('action_request')) {
+    baseSuggestions.push('I can do that for a special tip! 😇');
+    baseSuggestions.push('Are you ready to see more? Send some tokens! 🔥');
+  }
+  if (toneTags.includes('sexual')) {
+    baseSuggestions.push('You\'re making me feel naughty... 😉');
+    baseSuggestions.push('I can show you so much more in private.');
   }
   
   if (baseSuggestions.length === 0) {
