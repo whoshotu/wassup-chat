@@ -53,6 +53,14 @@ export function DecoderPage() {
   const [history, setHistory] = useState<DecodeResult[]>([])
   const [searchQuery, setSearchQuery] = useState('')
 
+  // New Reply Mode States
+  const [replyMode, setReplyMode] = useState(false)
+  const [replyText, setReplyText] = useState('')
+  const [replyTargetLanguage, setReplyTargetLanguage] = useState('Spanish')
+  const [replyResult, setReplyResult] = useState('')
+  const [replyLoading, setReplyLoading] = useState(false)
+  const [copied, setCopied] = useState(false)
+
   // Load settings and history from localStorage
   useEffect(() => {
     const savedHistory = localStorage.getItem('wassup_history')
@@ -174,143 +182,245 @@ export function DecoderPage() {
         </div>
 
         <Card className="border-white/5 bg-[#121216]">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base font-medium text-slate-200">Paste Chat Message</CardTitle>
+          <CardHeader className="pb-3 border-b border-white/5 mb-4">
+            <div className="flex bg-[#0a0a0c] p-1 rounded-xl border border-white/10">
+              <button 
+                className={cn("flex-1 py-2 text-xs font-bold rounded-lg transition-all", !replyMode ? "bg-primary text-white" : "text-slate-400 hover:text-white")}
+                onClick={() => setReplyMode(false)}
+              >
+                Decode Incoming
+              </button>
+              <button 
+                className={cn("flex-1 py-2 text-xs font-bold rounded-lg transition-all", replyMode ? "bg-primary text-white" : "text-slate-400 hover:text-white")}
+                onClick={() => setReplyMode(true)}
+              >
+                Translate Reply
+              </button>
+            </div>
           </CardHeader>
           <CardContent className="space-y-5">
-            <Textarea 
-              placeholder="Paste the message you want to decode..." 
-              className="min-h-[150px] bg-[#0a0a0c] border-white/5 focus:ring-primary focus:border-primary/50 text-base placeholder:text-slate-600 resize-none h-40"
-              value={inputText} 
-              onChange={e => setInputText(e.target.value)} 
-            />
-            
-            <div className="space-y-2">
-              <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Translate to</label>
-              <Select value={targetLanguage} onValueChange={handleSetTargetLanguage}>
-                <SelectTrigger className="w-full bg-[#0a0a0c] border-white/5 text-slate-300">
-                  <SelectValue placeholder="Select Language" />
-                </SelectTrigger>
-                <SelectContent className="bg-[#121216] border-white/10 text-slate-200">
-                  {languages.map(l => (
-                    <SelectItem key={l} value={l}>{l}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {!replyMode ? (
+              <>
+                <Textarea 
+                  placeholder="Paste the message you want to decode..." 
+                  className="min-h-[150px] bg-[#0a0a0c] border-white/5 focus:ring-primary focus:border-primary/50 text-base placeholder:text-slate-600 resize-none h-40"
+                  value={inputText} 
+                  onChange={e => setInputText(e.target.value)} 
+                />
+                
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Translate to</label>
+                  <Select value={targetLanguage} onValueChange={handleSetTargetLanguage}>
+                    <SelectTrigger className="w-full bg-[#0a0a0c] border-white/5 text-slate-300">
+                      <SelectValue placeholder="Select Language" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#121216] border-white/10 text-slate-200">
+                      {languages.map(l => (
+                        <SelectItem key={l} value={l}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-            <Button 
-              onClick={handleDecode} 
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-white text-base font-bold rounded-xl active:scale-[0.98] transition-all"
-              disabled={loading || !inputText.trim()}
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Decoding...
-                </>
-              ) : 'Decode Message'}
-            </Button>
+                <Button 
+                  onClick={handleDecode} 
+                  className="w-full h-12 bg-primary hover:bg-primary/90 text-white text-base font-bold rounded-xl active:scale-[0.98] transition-all"
+                  disabled={loading || !inputText.trim()}
+                >
+                  {loading ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Decoding...
+                    </>
+                  ) : 'Decode Message'}
+                </Button>
+              </>
+            ) : (
+              <>
+                <Textarea 
+                  placeholder={`Type your response in ${targetLanguage}...`}
+                  className="min-h-[150px] bg-[#0a0a0c] border-white/5 focus:ring-primary focus:border-primary/50 text-base placeholder:text-slate-600 resize-none h-40"
+                  value={replyText} 
+                  onChange={e => setReplyText(e.target.value)} 
+                />
+                
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Viewer's Language</label>
+                  <Select value={replyTargetLanguage} onValueChange={setReplyTargetLanguage}>
+                    <SelectTrigger className="w-full bg-[#0a0a0c] border-white/5 text-slate-300">
+                      <SelectValue placeholder="Select Language" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#121216] border-white/10 text-slate-200">
+                      {languages.map(l => (
+                        <SelectItem key={l} value={l}>{l}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <Button 
+                  onClick={async () => {
+                    if (!replyText.trim()) return;
+                    setReplyLoading(true);
+                    setCopied(false);
+                    try {
+                      const res = await decoder.translateText(replyText, targetLanguage, replyTargetLanguage);
+                      setReplyResult(res.translatedText);
+                    } catch (e) {
+                      setReplyResult("Error translating reply.");
+                    } finally {
+                      setReplyLoading(false);
+                    }
+                  }} 
+                  className="w-full h-12 bg-emerald-600 hover:bg-emerald-500 text-white text-base font-bold rounded-xl active:scale-[0.98] transition-all"
+                  disabled={replyLoading || !replyText.trim()}
+                >
+                  {replyLoading ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : 'Translate & Copy Ready'}
+                </Button>
+              </>
+            )}
           </CardContent>
         </Card>
       </div>
 
       {/* Output Section */}
       <div>
-        {result ? (
+        {!replyMode ? (
+          result ? (
+            <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {result.error ? (
+                <Card className="border-red-500/20 bg-red-500/5">
+                  <CardContent className="pt-6 text-red-400 text-sm">
+                    <AlertCircle className="w-4 h-4 inline mr-2" />
+                    {result.error}
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="border-white/5 bg-[#121216] overflow-hidden">
+                  <CardHeader className="flex flex-row items-center justify-between border-b border-white/5">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="bg-primary/20 text-primary border-0 text-[10px] font-bold uppercase tracking-tighter px-1.5 h-4">
+                        {result.sourceLanguage}
+                      </Badge>
+                      <CardTitle className="text-sm font-medium text-slate-400">Translation & Analysis</CardTitle>
+                    </div>
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4, 5].map((s) => (
+                        <Heart 
+                          key={s} 
+                          className={cn(
+                            "w-3.5 h-3.5 transition-colors", 
+                            s <= Math.round(result.vibeScore) ? "fill-primary text-primary" : "text-white/5"
+                          )} 
+                        />
+                      ))}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-6 space-y-6">
+                    <div className="space-y-1">
+                      <p className="text-2xl font-semibold text-white leading-tight">
+                        {result.translatedText}
+                      </p>
+                      <div className="pt-2">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600 block mb-1">Original Message</span>
+                        <p className="text-sm text-slate-500 italic">
+                          "{result.originalText}"
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {result.toneTags.map(tone => (
+                        <Badge key={tone} className={cn("px-2.5 py-0.5 rounded-full text-[10px] border font-bold uppercase tracking-wider", getToneColor(tone))}>
+                          {tone}
+                        </Badge>
+                      ))}
+                    </div>
+
+                    <div className="pt-6 border-t border-white/5 space-y-3">
+                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                        <Sparkles className="w-3 h-3 text-primary" />
+                        Suggested Responses
+                      </h4>
+                      <div className="grid gap-2">
+                        {result.suggestions.map((s, idx) => (
+                          <div key={idx} className="bg-[#0a0a0c] p-3 rounded-lg border border-white/5 hover:border-primary/30 transition-colors group">
+                            <div className="flex justify-between items-start gap-2 mb-1.5">
+                              <p className="text-sm text-slate-200 font-medium leading-snug">
+                                {s.source}
+                              </p>
+                              <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="w-6 h-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10"
+                                onClick={() => navigator.clipboard.writeText(s.source)}
+                                title="Copy Reply"
+                              >
+                                <Copy className="w-3 h-3 text-slate-400" />
+                              </Button>
+                            </div>
+                            <p className="text-[11px] text-slate-500 italic flex items-center gap-1.5 border-t border-white/5 pt-1.5">
+                              <ArrowRight className="w-3 h-3 text-primary/50" />
+                              <span>{s.target}</span>
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          ) : (
+            <div className="h-full min-h-[400px] flex flex-col items-center justify-center border border-white/5 rounded-2xl bg-[#121216]/50 text-center p-8">
+              <div className="bg-[#0a0a0c] p-5 rounded-3xl mb-6 shadow-inner border border-white/5">
+                <Globe className="w-10 h-10 text-slate-700" />
+              </div>
+              <h3 className="text-xl font-bold text-white mb-2">Ready to Decode</h3>
+              <p className="text-slate-500 max-w-xs text-sm leading-relaxed">
+                Paste a chat message and click "Decode Message" to see the translation and tone analysis.
+              </p>
+            </div>
+          )
+        ) : (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            {result.error ? (
-              <Card className="border-red-500/20 bg-red-500/5">
-                <CardContent className="pt-6 text-red-400 text-sm">
-                  <AlertCircle className="w-4 h-4 inline mr-2" />
-                  {result.error}
+            {replyResult ? (
+              <Card className="border-emerald-500/20 bg-[#121216] overflow-hidden shadow-emerald-500/5 shadow-2xl">
+                <CardHeader className="flex flex-row items-center justify-between border-b border-white/5 bg-emerald-500/5">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-emerald-500/20 text-emerald-400 border-0 text-[10px] font-bold uppercase tracking-tighter px-1.5 h-4">
+                      {replyTargetLanguage}
+                    </Badge>
+                    <CardTitle className="text-sm font-medium text-emerald-400">Translated Reply</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="pt-8 space-y-8">
+                  <p className="text-3xl font-bold text-white leading-tight">
+                    {replyResult}
+                  </p>
+                  <Button 
+                    onClick={() => {
+                        navigator.clipboard.writeText(replyResult);
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                    }}
+                    className="w-full h-14 bg-[#0a0a0c] hover:bg-white/10 text-white border border-white/10 rounded-xl font-bold flex items-center justify-center gap-2 text-base transition-colors duration-300"
+                  >
+                    {copied ? <><Heart className="w-5 h-5 text-emerald-500 fill-emerald-500" /> Copied!</> : <><Copy className="w-5 h-5" /> Copy to Clipboard</>}
+                  </Button>
                 </CardContent>
               </Card>
             ) : (
-              <Card className="border-white/5 bg-[#121216] overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between border-b border-white/5">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="secondary" className="bg-primary/20 text-primary border-0 text-[10px] font-bold uppercase tracking-tighter px-1.5 h-4">
-                      {result.sourceLanguage}
-                    </Badge>
-                    <CardTitle className="text-sm font-medium text-slate-400">Translation & Analysis</CardTitle>
-                  </div>
-                  <div className="flex gap-0.5">
-                    {[1, 2, 3, 4, 5].map((s) => (
-                      <Heart 
-                        key={s} 
-                        className={cn(
-                          "w-3.5 h-3.5 transition-colors", 
-                          s <= Math.round(result.vibeScore) ? "fill-primary text-primary" : "text-white/5"
-                        )} 
-                      />
-                    ))}
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6 space-y-6">
-                  <div className="space-y-1">
-                    <p className="text-2xl font-semibold text-white leading-tight">
-                      {result.translatedText}
-                    </p>
-                    <div className="pt-2">
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600 block mb-1">Original Message</span>
-                      <p className="text-sm text-slate-500 italic">
-                        "{result.originalText}"
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {result.toneTags.map(tone => (
-                      <Badge key={tone} className={cn("px-2.5 py-0.5 rounded-full text-[10px] border font-bold uppercase tracking-wider", getToneColor(tone))}>
-                        {tone}
-                      </Badge>
-                    ))}
-                  </div>
-
-                  <div className="pt-6 border-t border-white/5 space-y-3">
-                    <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
-                      <Sparkles className="w-3 h-3 text-primary" />
-                      Suggested Responses
-                    </h4>
-                    <div className="grid gap-2">
-                      {result.suggestions.map((s, idx) => (
-                        <div key={idx} className="bg-[#0a0a0c] p-3 rounded-lg border border-white/5 hover:border-primary/30 transition-colors group">
-                          <div className="flex justify-between items-start gap-2 mb-1.5">
-                            <p className="text-sm text-slate-200 font-medium leading-snug">
-                              {s.source}
-                            </p>
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              className="w-6 h-6 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white/10"
-                              onClick={() => navigator.clipboard.writeText(s.source)}
-                              title="Copy Reply"
-                            >
-                              <Copy className="w-3 h-3 text-slate-400" />
-                            </Button>
-                          </div>
-                          <p className="text-[11px] text-slate-500 italic flex items-center gap-1.5 border-t border-white/5 pt-1.5">
-                            <ArrowRight className="w-3 h-3 text-primary/50" />
-                            <span>{s.target}</span>
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="h-full min-h-[400px] flex flex-col items-center justify-center border border-white/5 rounded-2xl bg-[#121216]/50 text-center p-8">
+                <div className="bg-[#0a0a0c] p-5 rounded-3xl mb-6 shadow-inner border border-white/5">
+                  <MessageSquare className="w-10 h-10 text-slate-700" />
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Write Your Reply</h3>
+                <p className="text-slate-500 max-w-xs text-sm leading-relaxed">
+                  Type your response in {targetLanguage} and we'll translate it to the viewer's language.
+                </p>
+              </div>
             )}
-          </div>
-        ) : (
-          <div className="h-full min-h-[400px] flex flex-col items-center justify-center border border-white/5 rounded-2xl bg-[#121216]/50 text-center p-8">
-            <div className="bg-[#0a0a0c] p-5 rounded-3xl mb-6 shadow-inner border border-white/5">
-              <Globe className="w-10 h-10 text-slate-700" />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">Ready to Decode</h3>
-            <p className="text-slate-500 max-w-xs text-sm leading-relaxed">
-              Paste a chat message and click "Decode Message" to see the translation and tone analysis.
-            </p>
           </div>
         )}
       </div>
