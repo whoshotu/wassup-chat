@@ -52,11 +52,9 @@ export function DecoderPage() {
   const [activeTab, setActiveTab] = useState('decode')
   const [history, setHistory] = useState<DecodeResult[]>([])
   const [searchQuery, setSearchQuery] = useState('')
-
-  // New Reply Mode States
   const [replyMode, setReplyMode] = useState(false)
   const [replyText, setReplyText] = useState('')
-  const [replyTargetLanguage, setReplyTargetLanguage] = useState('Spanish')
+  const [replyTargetLanguage, setReplyTargetLanguage] = useState(() => localStorage.getItem('wassup_reply_lang') || 'Spanish')
   const [replyResult, setReplyResult] = useState('')
   const [replyLoading, setReplyLoading] = useState(false)
   const [copied, setCopied] = useState(false)
@@ -242,11 +240,30 @@ export function DecoderPage() {
                   className="min-h-[150px] bg-[#0a0a0c] border-white/5 focus:ring-primary focus:border-primary/50 text-base placeholder:text-slate-600 resize-none h-40"
                   value={replyText} 
                   onChange={e => setReplyText(e.target.value)} 
+                  onKeyDown={async (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      if (!replyText.trim() || replyLoading) return;
+                      setReplyLoading(true);
+                      setCopied(false);
+                      try {
+                        const res = await decoder.translateText(replyText, targetLanguage, replyTargetLanguage);
+                        setReplyResult(res.translatedText);
+                      } catch (err) {
+                        setReplyResult("Error translating reply.");
+                      } finally {
+                        setReplyLoading(false);
+                      }
+                    }
+                  }}
                 />
                 
                 <div className="space-y-2">
                   <label className="text-xs font-bold uppercase tracking-wider text-slate-500">Viewer's Language</label>
-                  <Select value={replyTargetLanguage} onValueChange={setReplyTargetLanguage}>
+                  <Select value={replyTargetLanguage} onValueChange={(val) => {
+                    setReplyTargetLanguage(val);
+                    localStorage.setItem('wassup_reply_lang', val);
+                  }}>
                     <SelectTrigger className="w-full bg-[#0a0a0c] border-white/5 text-slate-300">
                       <SelectValue placeholder="Select Language" />
                     </SelectTrigger>
