@@ -59,6 +59,13 @@ export function DecoderPage() {
   const [replyLoading, setReplyLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  // Mobile & PWA States
+  const [installPrompt, setInstallPrompt] = useState<any>(null)
+  const [isPWA, setIsPWA] = useState(false)
+
+  // Safety & Privacy States
+  const [privacyMode, setPrivacyMode] = useState(() => localStorage.getItem('wassup_privacy_mode') === 'true')
+
   // Load settings and history from localStorage
   useEffect(() => {
     const savedHistory = localStorage.getItem('wassup_history')
@@ -86,10 +93,60 @@ export function DecoderPage() {
     }
   }, [])
 
-  // Save history to localStorage
+  // Mobile/PWA Logic
   useEffect(() => {
+    // Check if already in PWA mode
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone) {
+      setIsPWA(true)
+    }
+
+    const handler = (e: any) => {
+      e.preventDefault()
+      setInstallPrompt(e)
+    }
+
+    window.addEventListener('beforeinstallprompt', handler)
+    return () => window.removeEventListener('beforeinstallprompt', handler)
+  }, [])
+
+  // Save history to localStorage (only if not in privacy mode)
+  useEffect(() => {
+    if (privacyMode) return
     localStorage.setItem('wassup_history', JSON.stringify(history))
-  }, [history])
+  }, [history, privacyMode])
+
+  // Save privacy mode
+  useEffect(() => {
+    localStorage.setItem('wassup_privacy_mode', String(privacyMode))
+    if (privacyMode) {
+      // Clear history when entering privacy mode for safety
+      setHistory([])
+      localStorage.removeItem('wassup_history')
+    }
+  }, [privacyMode])
+
+  const handleInstallClick = async () => {
+    if (!installPrompt) return
+    installPrompt.prompt()
+    const { outcome } = await installPrompt.userChoice
+    if (outcome === 'accepted') {
+      setInstallPrompt(null)
+    }
+  }
+
+  const handleClearHistory = () => {
+    if (window.confirm("Are you sure you want to clear your decoding history? This cannot be undone.")) {
+      setHistory([])
+      localStorage.removeItem('wassup_history')
+    }
+  }
+
+  const handleWipeData = () => {
+    if (window.confirm("WIPE ALL DATA? This will clear your history, settings, and preferences completely.")) {
+      localStorage.clear()
+      window.location.reload()
+    }
+  }
 
   // Save preferred language
   const handleSetTargetLanguage = (lang: string) => {
@@ -158,21 +215,21 @@ export function DecoderPage() {
         <div className="relative overflow-hidden p-6 rounded-2xl bg-[#121216] border border-purple-500/30 shadow-2xl group">
           <div className="absolute inset-0 bg-gradient-to-br from-purple-600/10 via-transparent to-transparent opacity-50" />
           <div className="relative z-10 flex flex-col md:flex-row items-center gap-6">
-            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-3 rounded-2xl shadow-lg shadow-purple-500/20 transform group-hover:scale-110 transition-transform duration-500">
-                <img src="/extension-icon.png" alt="Pro Icon" className="w-12 h-12 drop-shadow-md" />
+            <div className="bg-gradient-to-br from-purple-500 to-indigo-600 p-2 md:p-3 rounded-2xl shadow-lg shadow-purple-500/20 transform group-hover:scale-110 transition-transform duration-500">
+                <img src="/extension-icon.png" alt="Pro Icon" className="w-10 h-10 md:w-12 md:h-12 drop-shadow-md" />
             </div>
             <div className="flex-1 text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-2 mb-1">
-                <h3 className="text-white font-bold text-lg tracking-tight">Wassup Pro Extension</h3>
-                <Badge className="bg-purple-500 text-white border-0 text-[10px] font-black px-2 h-4">$20/MO</Badge>
+                <h3 className="text-white font-bold text-base md:text-lg tracking-tight">Wassup Pro Extension</h3>
+                <Badge className="bg-purple-500 text-white border-0 text-[9px] md:text-[10px] font-black px-1.5 md:px-2 h-4">$20/MO</Badge>
               </div>
-              <p className="text-slate-400 text-xs leading-relaxed max-w-sm">
-                Get the <span className="text-purple-400 font-bold">Universal Decoder</span>. Real-time, 1-click translations on Twitter, Discord, and any cam site. 
+              <p className="text-slate-400 text-[10px] md:text-xs leading-relaxed max-w-sm">
+                Get the <span className="text-purple-400 font-bold">Universal Decoder</span>. Real-time, 1-click translations on Twitter, Discord, and any site. 
               </p>
             </div>
             <Button 
               onClick={() => window.open('https://ko-fi.com/anthonylopez74414', '_blank')}
-              className="w-full md:w-auto bg-purple-600 hover:bg-purple-500 text-white px-8 h-12 rounded-xl font-bold shadow-xl shadow-purple-500/20 transition-all hover:translate-y-[-2px] active:translate-y-0"
+              className="w-full md:w-auto bg-purple-600 hover:bg-purple-500 text-white px-6 md:px-8 h-10 md:h-12 rounded-xl text-sm font-bold shadow-xl shadow-purple-500/20 transition-all active:scale-95"
             >
               Get Pro Now
             </Button>
@@ -594,6 +651,88 @@ export function DecoderPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Data Management & Privacy */}
+      <Card className="border-white/5 bg-[#121216]">
+        <CardHeader className="pb-3 border-b border-white/5">
+          <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+            <Shield className="w-3 h-3" /> Privacy & Data
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-6">
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-blue-500/10 rounded-2xl">
+                <Shield className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-white">Privacy Mode</p>
+                <p className="text-xs text-slate-500">Disable history saving on this device</p>
+              </div>
+            </div>
+            <button 
+              onClick={() => setPrivacyMode(!privacyMode)}
+              className={cn(
+                "w-12 h-6 rounded-full p-1 transition-colors duration-200 outline-none",
+                privacyMode ? "bg-primary" : "bg-slate-700"
+              )}
+            >
+              <div className={cn(
+                "w-4 h-4 bg-white rounded-full transition-transform duration-200",
+                privacyMode ? "translate-x-6" : "translate-x-0"
+              )} />
+            </button>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button 
+              onClick={handleClearHistory}
+              variant="outline" 
+              className="flex-1 bg-white/5 border-white/10 text-slate-300 hover:text-white"
+            >
+              Clear History
+            </Button>
+            <Button 
+              onClick={handleWipeData}
+              variant="outline" 
+              className="flex-1 bg-white/5 border-red-500/20 text-red-400 hover:text-red-300 hover:bg-red-500/5"
+            >
+              Deep Wipe (Reset All)
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Mobile App Install */}
+      {(installPrompt || isPWA) && (
+        <Card className="border-primary/20 bg-primary/5">
+          <CardContent className="py-6">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+              <div className="flex items-center gap-4">
+                <div className="p-3 bg-primary rounded-2xl shadow-lg shadow-primary/20">
+                  <Sparkles className="w-6 h-6 text-white" />
+                </div>
+                <div className="text-center md:text-left">
+                  <p className="text-lg font-bold text-white">
+                    {isPWA ? "Wassup App Ready" : "Install Wassup"}
+                  </p>
+                  <p className="text-sm text-slate-400">
+                    {isPWA ? "You're using the optimized mobile app version." : "Add to home screen for a full-screen, native experience."}
+                  </p>
+                </div>
+              </div>
+              {!isPWA && (
+                <Button 
+                  onClick={handleInstallClick}
+                  className="w-full md:w-auto bg-primary hover:bg-primary/90 text-white rounded-xl px-8 h-12 font-bold transition-all active:scale-95"
+                >
+                  Add to Home Screen
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
     </div>
   )
