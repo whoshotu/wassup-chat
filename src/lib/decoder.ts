@@ -124,8 +124,18 @@ export interface TranslationResult {
   detectedSource: string;
 }
 
+let lastApiCall = 0;
+const API_RATE_LIMIT_MS = 800;
+
 export async function translateText(text: string, from: string, to: string, customDict: Record<string, string> = {}): Promise<TranslationResult> {
   if (!text) return { translatedText: text, detectedSource: from === 'Auto-detect' ? 'Unknown' : from };
+  
+  // Rate limit to prevent 429 errors
+  const now = Date.now();
+  if (now - lastApiCall < API_RATE_LIMIT_MS) {
+    await new Promise(r => setTimeout(r, API_RATE_LIMIT_MS - (now - lastApiCall)));
+  }
+  lastApiCall = Date.now();
   
   let preProcessedText = text;
   
