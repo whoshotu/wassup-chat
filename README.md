@@ -5,13 +5,38 @@ A mobile-first web app that instantly translates and explains international view
 ## Features
 
 - **Instant Chat Decoder**: Paste viewer messages and get plain-language explanations with slang breakdowns and tone detection
-- **Slang & Abbreviation Library**: Clickable definitions for detected slang terms with cultural context
-- **Tone Detection**: Visual tags indicating message intent (friendly, flirty, negative, etc.)
+- **Slang & Cultural Context**: AI-powered breakdown of slang terms, abbreviations, and cultural expressions
+- **Tone Detection**: Context-aware tags (friendly, flirty, negative, illegal, etc.)
 - **Vibe Score**: Sentiment calculation on a 5-heart scale
-- **Message History**: Saved decoded messages with search and favorites
-- **Quick Reply Guidance**: Intent-based suggestions for how to respond
+- **Message History**: Saved decoded messages with search
+- **Quick Reply Guidance**: Smart reply suggestions in the viewer's language
+- **Content Safety**: Automatic detection and warning for illegal content (CSAM, animal abuse, trafficking, threats)
+- **Gemini AI Integration** (Optional): Enhanced analysis with Google Gemini API
 - **Dark/Light Theme**: Toggle with localStorage persistence
 - **PWA Support**: Installable as a Progressive Web App
+
+## Gemini AI (Optional)
+
+The decoder works fully without any API key using free Google Translate. For enhanced analysis, users can optionally provide their own Gemini API key:
+
+- **Enhanced Tone Analysis**: Context-aware, nuanced tone detection
+- **Slang Breakdown**: AI explains cultural context and meaning of slang
+- **Smart Suggestions**: Relevant reply suggestions based on message content
+- **Rate Limited**: 15 requests/min, 1,500/day (Gemini free tier)
+- **Graceful Fallback**: Automatically falls back to free decoder if Gemini fails or rate limit is hit
+
+Get a free API key at [aistudio.google.com](https://aistudio.google.com)
+
+## Content Safety
+
+The decoder automatically scans messages for illegal content and displays prominent warnings:
+
+- **CSAM/Child Exploitation**: Detected across multiple languages (English, Spanish, etc.)
+- **Animal Abuse/Bestiality**: Flagged with reporting guidance
+- **Human Trafficking**: Detected and flagged
+- **Threats/Violence**: Doxxing and violence threats flagged
+
+All detection runs client-side. Adult/NSFW content is allowed (this app is for cam models).
 
 ## Get the Browser Extension
 
@@ -40,7 +65,8 @@ A mobile-first web app that instantly translates and explains international view
 - **Styling**: Tailwind CSS
 - **Routing**: React Router v6
 - **State Management**: React Context API
-- **Storage**: LocalStorage for user data and message history
+- **Storage**: LocalStorage for user data, message history, and API keys
+- **Translation**: Google Translate API (free, no key) + Gemini AI (optional)
 - **PWA**: vite-plugin-pwa with Workbox
 
 ## Getting Started
@@ -80,7 +106,9 @@ src/
 │   ├── AuthPage.tsx      # Login/signup page
 │   └── DecoderPage.tsx   # Main app (decode, history, settings, info tabs)
 ├── lib/
-│   ├── decoder.ts        # Core decoder logic: language detection, translation, tone analysis
+│   ├── decoder.ts        # Core decoder: language detection, translation, tone analysis, safety
+│   ├── gemini.ts         # Gemini API client for enhanced AI analysis
+│   ├── geminiRateLimit.ts # Client-side rate limit tracking (15 RPM / 1500 RPD)
 │   └── utils.ts          # cn() utility (clsx + tailwind-merge)
 ├── types/
 │   └── index.ts          # Shared type definitions
@@ -89,24 +117,15 @@ src/
 └── index.css             # Tailwind CSS + custom utilities
 ```
 
-## Key Features Implementation
+## Data Storage (All Client-Side)
 
-### Language Detection
-Uses pattern matching for scripts (Japanese, Korean, Chinese, Arabic, Russian) and common word detection. In production, integrate with:
-- Google Cloud Translation API
-- DeepL API
-- OpenAI GPT for context-aware translation
-
-### Data Storage
-- User authentication state stored in localStorage
-- Message history stored in localStorage
-- Theme preference stored in localStorage
-
-### Mobile-First Design
-- Responsive layout optimized for mobile devices
-- Bottom navigation bar for easy thumb access
-- Large touch targets and minimal navigation
-- PWA installable on mobile and desktop
+| localStorage Key | Purpose |
+|-----------------|---------|
+| `wassup_history` | Saved decoded messages |
+| `wassup_preferred_lang` | User's target language |
+| `wassup-theme` | Dark/light theme preference |
+| `wassup_gemini_api_key` | Optional Gemini API key |
+| `wassup_gemini_usage` | Rate limit tracking for Gemini |
 
 ## License
 

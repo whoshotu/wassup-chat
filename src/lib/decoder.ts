@@ -1,7 +1,11 @@
 /**
  * Client-Side Decoder Logic
  * Optimized for frontend execution without backend dependencies.
+ * Optional Gemini AI integration for enhanced analysis.
  */
+
+import { analyzeWithGemini } from './gemini';
+import { canUseGemini, recordUsage } from './geminiRateLimit';
 
 export interface DecodeResult {
   originalText: string;
@@ -13,6 +17,8 @@ export interface DecodeResult {
   suggestions: { source: string; target: string }[];
   status: string;
   safetyWarning?: string;
+  slangTerms?: { term: string; meaning: string; context: string }[];
+  usedGemini?: boolean;
 }
 
 // Content safety detection - flags ONLY illegal activities
@@ -21,13 +27,51 @@ export function detectSafetyWarnings(text: string, translatedText: string): stri
   const combined = `${text} ${translatedText}`.toLowerCase();
 
   // CSAM / Child exploitation (hard no - illegal everywhere)
-  if (/\b(cp|csam|pedo|paedo|child\s*(porn|sex|exploit|abuse|traffick)|under\s*age|preteen|jailbait|loli|pedofile|groom(ing|er)|child\s*nude|kid\s*nude|teen\s*nude|boylove|girllove)\b/i.test(combined)) {
-    return "ILLEGAL CONTENT DETECTED: This message appears to reference child sexual abuse material (CSAM) or child exploitation. This is a serious crime. Do NOT engage with this user. Report immediately to NCMEC CyberTipline (CyberTipline.org) and the platform. Preserve all evidence.";
+  // Covers: cp, csam, pedo, grooming, child/kid/teen abuse, Spanish/Portuguese terms
+  const csamPatterns = [
+    /\b(cp|c\.p|c_p|csam|pedo|paedo|pedofile|jailbait|loli)\b/i,
+    /child\s*(porn|sex|exploit|abuse|traffick|nude|video|pic|image|content)/i,
+    /kid\s*(porn|sex|exploit|abuse|nude|video|pic|image|content)/i,
+    /teen\s*(porn|sex|nude|leak|video|pic|image)/i,
+    /\bunder\s*age\b/i,
+    /\bpreteen\b/i,
+    /\bgroom(ing|er|ed)\b/i,
+    /boylove|girllove/i,
+    /porno\s*infantil/i,
+    /ni[ñn]o\s*(porn|sex|nude|video)/i,
+    /ni[ñn]a\s*(porn|sex|nude|video)/i,
+    /menor\s*(de\s*edad|porn|sex|nude)/i,
+    /pedófilo/i,
+    /sell\s*(cp|child|kid|teen|minor|underage)/i,
+    /\b(cp|child|kid)\s*(collection|archive|videos?|pics?|images?|content)\b/i,
+    /child\s*abuse/i,
+    /abuso\s*infantil/i,
+    /sexual\s*(abuse|exploit)\s*(of|with)\s*(child|kid|minor|teen)/i,
+  ];
+  for (const pattern of csamPatterns) {
+    if (pattern.test(combined)) {
+      return "ILLEGAL CONTENT DETECTED: This message appears to reference child sexual abuse material (CSAM) or child exploitation. This is a serious crime. Do NOT engage with this user. Report immediately to NCMEC CyberTipline (CyberTipline.org) and the platform. Preserve all evidence.";
+    }
   }
 
   // Animal abuse
-  if (/\b(animal\s*(abuse|cruelt|hurt|torture|kill)|bestialit|zoophile|zoo\s*sex|fuck(ing)?\s*(a|the)\s*(dog|cat|horse|animal)|dog\s*(sex|fuck)|cat\s*(sex|fuck))\b/i.test(combined)) {
-    return "ILLEGAL CONTENT DETECTED: This message appears to reference animal abuse or bestiality, which is a criminal offense. Do NOT engage with this user. Report to local law enforcement and the platform.";
+  const animalPatterns = [
+    /animal\s*(abuse|cruelt|hurt|torture|kill)/i,
+    /\bbestialit/i,
+    /\bzoophile/i,
+    /\bzoo\s*sex\b/i,
+    /fuck(ing)?\s*(a|the)\s*(dog|cat|horse|animal)/i,
+    /dog\s*(sex|fuck)/i,
+    /cat\s*(sex|fuck)/i,
+    /animal\s*(sex|fuck)/i,
+    /\banimal\s*cruelty\b/i,
+    /\bpuppy\s*(abuse|torture|hurt|kill)/i,
+    /\bkitten\s*(abuse|torture|hurt|kill)/i,
+  ];
+  for (const pattern of animalPatterns) {
+    if (pattern.test(combined)) {
+      return "ILLEGAL CONTENT DETECTED: This message appears to reference animal abuse or bestiality, which is a criminal offense. Do NOT engage with this user. Report to local law enforcement and the platform.";
+    }
   }
 
   // Human trafficking / exploitation of minors
@@ -238,7 +282,40 @@ export function detectTones(text: string): string[] {
   return tones;
 }
 
-export async function decodeMessage(text: string, targetLanguage: string = "English"): Promise<DecodeResult> {
+export async function decodeMessage(
+  text: string,
+  targetLanguage: string = "English",
+  geminiApiKey?: string
+): Promise<DecodeResult> {
+  // Try Gemini AI path if key is provided
+  if (geminiApiKey) {
+    const { allowed } = canUseGemini();
+    if (allowed) {
+      try {
+        const analysis = await analyzeWithGemini(text, targetLanguage, geminiApiKey);
+        recordUsage();
+        const safetyWarning = detectSafetyWarnings(text, analysis.translatedText);
+        return {
+          originalText: text,
+          translatedText: analysis.translatedText,
+          sourceLanguage: analysis.sourceLanguage,
+          targetLanguage,
+          toneTags: analysis.toneTags,
+          vibeScore: analysis.vibeScore,
+          suggestions: analysis.suggestedReplies,
+          status: 'generated',
+          safetyWarning,
+          slangTerms: analysis.slangTerms,
+          usedGemini: true,
+        };
+      } catch (err) {
+        console.warn('Gemini failed, falling back to free decoder:', err);
+        // Fall through to free flow below
+      }
+    }
+  }
+
+  // Free flow: Google Translate + local analysis
   let sourceLanguage = detectLanguage(text);
   
   // Fallback: if heuristic says English but text has very few English words, use auto-detect
@@ -300,7 +377,8 @@ export async function decodeMessage(text: string, targetLanguage: string = "Engl
     vibeScore,
     suggestions: pairedSuggestions,
     status: 'generated',
-    safetyWarning: detectSafetyWarnings(text, translatedText)
+    safetyWarning: detectSafetyWarnings(text, translatedText),
+    usedGemini: false,
   };
 }
 

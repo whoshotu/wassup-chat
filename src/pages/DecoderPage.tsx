@@ -28,6 +28,8 @@ import {
 import decoder from '@/lib/decoder'
 import { useTheme } from '@/contexts/ThemeContext'
 import { cn } from '@/lib/utils'
+import { getUsage, resetUsage } from '@/lib/geminiRateLimit'
+import type { GeminiUsageStats } from '@/types'
 
 type DecodeResult = {
   id: string;
@@ -41,6 +43,8 @@ type DecodeResult = {
   timestamp: number;
   error?: string;
   safetyWarning?: string;
+  slangTerms?: { term: string; meaning: string; context: string }[];
+  usedGemini?: boolean;
 }
 
 export function DecoderPage() {
@@ -53,6 +57,8 @@ export function DecoderPage() {
   const [activeTab, setActiveTab] = useState('decode')
   const [history, setHistory] = useState<DecodeResult[]>([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [geminiApiKey, setGeminiApiKey] = useState('')
+  const [geminiUsage, setGeminiUsage] = useState<GeminiUsageStats | null>(null)
 
   // Load settings and history from localStorage
   useEffect(() => {
@@ -81,6 +87,20 @@ export function DecoderPage() {
     }
   }, [])
 
+  // Load Gemini API key from localStorage
+  useEffect(() => {
+    const savedKey = localStorage.getItem('wassup_gemini_api_key')
+    if (savedKey) setGeminiApiKey(savedKey)
+    setGeminiUsage(getUsage())
+  }, [])
+
+  // Refresh usage stats every 30 seconds
+  useEffect(() => {
+    if (!geminiApiKey) return
+    const interval = setInterval(() => setGeminiUsage(getUsage()), 30000)
+    return () => clearInterval(interval)
+  }, [geminiApiKey])
+
   // Save history to localStorage
   useEffect(() => {
     localStorage.setItem('wassup_history', JSON.stringify(history))
@@ -100,8 +120,8 @@ export function DecoderPage() {
     if (!inputText.trim()) return
     setLoading(true)
     try {
-      // Use local client-side decoder
-      const res = await decoder.decodeMessage(inputText, targetLanguage)
+      // Use local client-side decoder (with optional Gemini enhancement)
+      const res = await decoder.decodeMessage(inputText, targetLanguage, geminiApiKey || undefined)
       const newDecode: DecodeResult = {
         ...res,
         id: Math.random().toString(36).substr(2, 9),
@@ -134,14 +154,34 @@ export function DecoderPage() {
       case 'compliment': return 'bg-purple-500/20 text-purple-500 border-purple-500/50'
       case 'question': return 'bg-blue-500/20 text-blue-500 border-blue-500/50'
       case 'negative': return 'bg-red-500/20 text-red-500 border-red-500/50'
+      case 'illegal': return 'bg-red-600/30 text-red-400 border-red-500/70'
       case 'excited': return 'bg-orange-500/20 text-orange-500 border-orange-500/50'
       case 'grateful': return 'bg-green-500/20 text-green-500 border-green-500/50'
+      case 'threatening': return 'bg-red-600/30 text-red-400 border-red-500/70'
       default: return 'bg-slate-500/20 text-slate-500 border-slate-500/50'
     }
   }
 
   const renderDecode = () => (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Rate Limit Warning */}
+      {geminiApiKey && geminiUsage && geminiUsage.minuteUsed >= 12 && geminiUsage.minuteUsed < geminiUsage.minuteLimit && (
+        <div className="lg:col-span-2 bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 flex items-center gap-3">
+          <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+          <p className="text-sm text-amber-300">
+            {geminiUsage.minuteLimit - geminiUsage.minuteUsed} Gemini requests left this minute — using free decoder after limit.
+          </p>
+        </div>
+      )}
+      {geminiApiKey && geminiUsage && geminiUsage.minuteUsed >= geminiUsage.minuteLimit && (
+        <div className="lg:col-span-2 bg-red-500/10 border border-red-500/30 rounded-xl p-3 flex items-center gap-3">
+          <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+          <p className="text-sm text-red-300">
+            Gemini rate limit reached — using free decoder. Limit resets in under a minute.
+          </p>
+        </div>
+      )}
+
       {/* Input Section */}
       <div className="space-y-6">
         <Card className="border-white/5 bg-[#121216]">
@@ -205,6 +245,12 @@ export function DecoderPage() {
                       {result.sourceLanguage}
                     </Badge>
                     <CardTitle className="text-sm font-medium text-slate-400">Translation & Analysis</CardTitle>
+                    {result.usedGemini && (
+                      <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-[10px] font-bold px-1.5 h-4">
+                        <Sparkles className="w-2.5 h-2.5 mr-1" />
+                        Gemini
+                      </Badge>
+                    )}
                   </div>
                   <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map((s) => (
@@ -247,6 +293,28 @@ export function DecoderPage() {
                       </Badge>
                     ))}
                   </div>
+
+                  {result.slangTerms && result.slangTerms.length > 0 && (
+                    <div className="pt-4 border-t border-white/5 space-y-3">
+                      <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+                        <MessageSquare className="w-3 h-3 text-primary" />
+                        Slang & Cultural Context
+                      </h4>
+                      <div className="grid gap-2">
+                        {result.slangTerms.map((slang, idx) => (
+                          <div key={idx} className="bg-[#0a0a0c] p-3 rounded-lg border border-white/5">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-bold text-primary">"{slang.term}"</span>
+                            </div>
+                            <p className="text-sm text-slate-300">{slang.meaning}</p>
+                            {slang.context && (
+                              <p className="text-xs text-slate-500 mt-1 italic">{slang.context}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   <div className="pt-6 border-t border-white/5 space-y-3">
                     <h4 className="text-[10px] font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
@@ -426,6 +494,96 @@ export function DecoderPage() {
               </SelectContent>
             </Select>
             <p className="text-xs text-slate-500">This is the language you speak and understand. The decoder will default to this.</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Gemini API Key */}
+      <Card className="border-white/5 bg-[#121216]">
+        <CardHeader className="pb-3 border-b border-white/5">
+          <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+            <Sparkles className="w-3 h-3" /> Gemini AI (Optional)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-bold text-white">API Key</label>
+            <input
+              type="password"
+              placeholder="AIza..."
+              value={geminiApiKey}
+              onChange={(e) => setGeminiApiKey(e.target.value)}
+              className="w-full bg-[#0a0a0c] border border-white/10 rounded-xl py-2.5 px-4 text-slate-300 text-sm focus:outline-none focus:border-primary/50"
+            />
+            <p className="text-xs text-slate-500">
+              Free key at <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">aistudio.google.com</a> — enhances tone analysis, slang breakdown, and suggestions.
+            </p>
+          </div>
+
+          {geminiUsage && (
+            <div className="space-y-3">
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-slate-400">This Minute</span>
+                  <span className={cn("font-bold", geminiUsage.minuteUsed >= geminiUsage.minuteLimit ? "text-red-400" : geminiUsage.minuteUsed >= 12 ? "text-amber-400" : "text-slate-400")}>
+                    {geminiUsage.minuteUsed}/{geminiUsage.minuteLimit}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-[#0a0a0c] rounded-full overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full transition-all", geminiUsage.minuteUsed >= geminiUsage.minuteLimit ? "bg-red-500" : geminiUsage.minuteUsed >= 12 ? "bg-amber-500" : "bg-primary")}
+                    style={{ width: `${(geminiUsage.minuteUsed / geminiUsage.minuteLimit) * 100}%` }}
+                  />
+                </div>
+              </div>
+              <div>
+                <div className="flex justify-between text-xs mb-1">
+                  <span className="text-slate-400">Today</span>
+                  <span className={cn("font-bold", geminiUsage.dayUsed >= geminiUsage.dayLimit ? "text-red-400" : "text-slate-400")}>
+                    {geminiUsage.dayUsed}/{geminiUsage.dayLimit}
+                  </span>
+                </div>
+                <div className="h-1.5 bg-[#0a0a0c] rounded-full overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full transition-all", geminiUsage.dayUsed >= geminiUsage.dayLimit ? "bg-red-500" : "bg-primary")}
+                    style={{ width: `${(geminiUsage.dayUsed / geminiUsage.dayLimit) * 100}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <Button
+              onClick={() => {
+                localStorage.setItem('wassup_gemini_api_key', geminiApiKey)
+                setGeminiUsage(getUsage())
+              }}
+              className="bg-primary hover:bg-primary/90 text-white rounded-xl text-sm"
+            >
+              Save Key
+            </Button>
+            <Button
+              onClick={() => {
+                setGeminiApiKey('')
+                localStorage.removeItem('wassup_gemini_api_key')
+                setGeminiUsage(getUsage())
+              }}
+              variant="outline"
+              className="border-white/10 text-slate-400 rounded-xl text-sm"
+            >
+              Clear Key
+            </Button>
+            <Button
+              onClick={() => {
+                resetUsage()
+                setGeminiUsage(getUsage())
+              }}
+              variant="outline"
+              className="border-white/10 text-slate-400 rounded-xl text-sm"
+            >
+              Reset Usage
+            </Button>
           </div>
         </CardContent>
       </Card>

@@ -1,8 +1,7 @@
 /**
- * Core type definitions for Wassup Scaffolder
+ * Core type definitions for Wassup
  */
 
-// Slang item with detailed information
 export interface SlangItem {
   term: string;
   meaning?: string;
@@ -13,11 +12,21 @@ export interface SlangItem {
   formalityLevel?: 'casual' | 'informal' | 'vulgar' | 'neutral';
 }
 
-// App layout mode
 export type LayoutMode = 'full' | 'overlay';
 
-// Service status
 export interface ServiceStatus {
   isLoading: boolean;
   error: string | null;
+}
+
+export interface GeminiUsageStats {
+  minuteUsed: number;
+  minuteLimit: number;
+  dayUsed: number;
+  dayLimit: number;
+}
+
+export interface GeminiConfig {
+  apiKey: string;
+  enabled: boolean;
 }
