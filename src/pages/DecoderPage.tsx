@@ -562,12 +562,12 @@ export function DecoderPage() {
     <div className="min-h-screen bg-[#0a0a0c] text-slate-200 flex flex-col">
       {/* Top Header */}
       <header className="px-6 py-4 flex items-center justify-between border-b border-white/5 bg-[#0a0a0c]/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="flex items-center gap-3">
+        <button onClick={() => navigate('/')} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
           <div className="bg-primary p-1.5 rounded-lg shadow-lg shadow-primary/20">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
           <span className="text-xl font-bold tracking-tight text-white gradient-text">Wassup</span>
-        </div>
+        </button>
         
         <div className="flex items-center gap-6">
           <button 
