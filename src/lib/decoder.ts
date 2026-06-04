@@ -26,12 +26,12 @@ export function detectLanguage(text: string = "") {
   if (/[\u0400-\u04FF]/.test(text)) return "Russian";
 
   // Common words/phrases heuristics
-  if (t.includes('hola') || t.includes('gracias') || t.includes('amigo') || t.includes('por favor') || t.includes('de locos')) return "Spanish";
-  if (t.includes('bonjour') || t.includes('merci') || t.includes('coucou') || t.includes('ami') || t.includes('vie') || t.includes('ouf')) return "French";
-  if (t.includes('hallo') || t.includes('danke') || t.includes('bitte')) return "German";
-  if (t.includes('ciao') || t.includes('amore') || t.includes('grazie') || t.includes('prego')) return "Italian";
-  if (t.includes('olá') || t.includes('oi') || t.includes('obrigado') || t.includes('tudo') || t.includes('quero') || t.includes('bom') || t.includes('jeito')) return "Portuguese";
-  if (t.includes('apa kabar') || t.includes('terima kasih') || t.includes('halo')) return "Indonesian";
+  if (t.includes('hola') || t.includes('gracias') || t.includes('amigo') || t.includes('por favor') || t.includes('de locos') || t.includes('qué') || t.includes('que ') || t.includes('quiero') || t.includes('tengo') || t.includes('está') || t.includes('como ') || t.includes('tú ') || t.includes('tu ') || t.includes('muy') || t.includes('pero') || t.includes('también') || t.includes('puedo') || t.includes('necesito') || t.includes('quieres') || t.includes('vendes') || t.includes('refieres') || t.includes('tuyos') || t.includes('bonita') || t.includes('hermoso') || t.includes('mi amor') || t.includes('bebé') || t.includes('cariño') || t.includes('español')) return "Spanish";
+  if (t.includes('bonjour') || t.includes('merci') || t.includes('coucou') || t.includes('ami') || t.includes('vie') || t.includes('ouf') || t.includes('je ') || t.includes('tu ') || t.includes('toi') || t.includes('nous') || t.includes('ils') || t.includes('elles') || t.includes('peux') || t.includes('être') || t.includes('avoir') || t.includes('faire') || t.includes('très') || t.includes('aussi') || t.includes('mais') || t.includes('avec') || t.includes('pour') || t.includes('dans') || t.includes('cest') || t.includes('c\'est') || t.includes('français')) return "French";
+  if (t.includes('hallo') || t.includes('danke') || t.includes('bitte') || t.includes('ich ') || t.includes('du ') || t.includes('nicht') || t.includes('ist ') || t.includes('ein ') || t.includes('eine') || t.includes('und ') || t.includes('aber') || t.includes('auch') || t.includes('kann') || t.includes('wir') || t.includes('haben') || t.includes('werden') || t.includes('deutsch')) return "German";
+  if (t.includes('ciao') || t.includes('amore') || t.includes('grazie') || t.includes('prego') || t.includes('sono') || t.includes('sei ') || t.includes('tu ') || t.includes('noi') || t.includes('loro') || t.includes('anche') || t.includes('però') || t.includes('puoi') || t.includes('possiamo') || t.includes('italiano')) return "Italian";
+  if (t.includes('olá') || t.includes('oi ') || t.includes('obrigado') || t.includes('tudo') || t.includes('quero') || t.includes('bom ') || t.includes('jeito') || t.includes('você') || t.includes('está') || t.includes('não') || t.includes('também') || t.includes('para') || t.includes('como') || t.includes('porque') || t.includes('português')) return "Portuguese";
+  if (t.includes('apa kabar') || t.includes('terima kasih') || t.includes('halo') || t.includes('saya') || t.includes('kamu') || t.includes('ini') || t.includes('itu') || t.includes('dengan') || t.includes('untuk') || t.includes('indonesia')) return "Indonesian";
   
   return "English"; // Fallback
 }
@@ -210,7 +210,20 @@ export function detectTones(text: string): string[] {
 }
 
 export async function decodeMessage(text: string, targetLanguage: string = "English"): Promise<DecodeResult> {
-  const sourceLanguage = detectLanguage(text);
+  let sourceLanguage = detectLanguage(text);
+  
+  // Fallback: if heuristic says English but text has very few English words, use auto-detect
+  if (sourceLanguage === "English") {
+    const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    const englishWords = ['the', 'and', 'you', 'are', 'for', 'that', 'with', 'this', 'have', 'from', 'they', 'been', 'will', 'would', 'there', 'their', 'what', 'about', 'which', 'when', 'make', 'like', 'just', 'over', 'such', 'take', 'than', 'them', 'some', 'could', 'other', 'more', 'very', 'also', 'after', 'well', 'only', 'into', 'year', 'your', 'good', 'know', 'want', 'dont', "don't", 'think', 'really', 'should', 'could', 'would'];
+    const englishCount = words.filter(w => englishWords.includes(w)).length;
+    const englishRatio = words.length > 0 ? englishCount / words.length : 1;
+    // If less than 20% of words are common English words, use auto-detect
+    if (englishRatio < 0.2 && words.length >= 3) {
+      sourceLanguage = "Auto-detect";
+    }
+  }
+
   const translatedText = await translateText(text, sourceLanguage, targetLanguage);
   const toneTags = detectTones(text);
   const vibeScore = computeVibeScore(text, toneTags);
@@ -237,8 +250,11 @@ export async function decodeMessage(text: string, targetLanguage: string = "Engl
     
     // source represents the input language (base text is in English, so we translate English -> Source)
     let sourceText = suggestion;
-    if (sourceLanguage !== 'English') {
+    if (sourceLanguage !== 'English' && sourceLanguage !== 'Auto-detect') {
       sourceText = await translateText(suggestion, 'English', sourceLanguage);
+    } else if (sourceLanguage === 'Auto-detect') {
+      // When auto-detect was used, translate to target language as best effort
+      sourceText = targetText;
     } else if (sourceLanguage === targetLanguage) {
       sourceText = targetText;
     }
