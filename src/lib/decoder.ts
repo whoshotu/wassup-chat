@@ -15,32 +15,28 @@ export interface DecodeResult {
   safetyWarning?: string;
 }
 
-// Content safety detection - flags illegal/harmful content
+// Content safety detection - flags ONLY illegal activities
+// Adult/NSFW content is allowed - this app is for cam models
 export function detectSafetyWarnings(text: string, translatedText: string): string | undefined {
   const combined = `${text} ${translatedText}`.toLowerCase();
 
-  // CSAM / Child exploitation
-  if (/\b(cp|csam|pedo|paedo|child\s*(porn|sex|exploit|abuse|traffick)| underage|preteen|jailbait|loli)\b/i.test(combined)) {
-    return "WARNING: This message may reference child exploitation material (CSAM), which is illegal. We strongly advise against engaging with this user. Consider reporting them to the platform and to NCMEC (CyberTipline.org) or your local authorities.";
+  // CSAM / Child exploitation (hard no - illegal everywhere)
+  if (/\b(cp|csam|pedo|paedo|child\s*(porn|sex|exploit|abuse|traffick)|under\s*age|preteen|jailbait|loli|pedofile|groom(ing|er)|child\s*nude|kid\s*nude|teen\s*nude|boylove|girllove)\b/i.test(combined)) {
+    return "ILLEGAL CONTENT DETECTED: This message appears to reference child sexual abuse material (CSAM) or child exploitation. This is a serious crime. Do NOT engage with this user. Report immediately to NCMEC CyberTipline (CyberTipline.org) and the platform. Preserve all evidence.";
   }
 
-  // Human trafficking / exploitation
+  // Animal abuse
+  if (/\b(animal\s*(abuse|cruelt|hurt|torture|kill)|bestialit|zoophile|zoo\s*sex|fuck(ing)?\s*(a|the)\s*(dog|cat|horse|animal)|dog\s*(sex|fuck)|cat\s*(sex|fuck))\b/i.test(combined)) {
+    return "ILLEGAL CONTENT DETECTED: This message appears to reference animal abuse or bestiality, which is a criminal offense. Do NOT engage with this user. Report to local law enforcement and the platform.";
+  }
+
+  // Human trafficking / exploitation of minors
   if (/\b(traffick|forced\s*(sex|labor|prostit)|slave|exploit\s*(girl|boy|teen|minor)|sell\s*(girl|boy|teen|minor))\b/i.test(combined)) {
-    return "WARNING: This message may reference human trafficking or exploitation, which is illegal. We strongly advise against engaging with this user. Consider reporting them to the platform and to the National Human Trafficking Hotline (1-888-373-7888).";
+    return "ILLEGAL CONTENT DETECTED: This message appears to reference human trafficking or exploitation, which is a serious crime. Do NOT engage with this user. Report to the National Human Trafficking Hotline (1-888-373-7888) and local law enforcement.";
   }
 
-  // Non-consensual content
-  if (/\b(revenge\s*porn|leak\s*(nude|onlyfans|private)|hack(ed)?\s*(onlyfans|account)|stolen\s*(nude|content))\b/i.test(combined)) {
-    return "CAUTION: This message may reference non-consensual intimate content distribution, which is illegal in many jurisdictions. Do not share or distribute such content.";
-  }
-
-  // Sextortion / blackmail
-  if (/\b(sextort|blackmail|pay\s*(me|i.ll\s*(leak|share|post))|send\s*(money|crypto|btc|bitcoin)\s*(or|else|or\s*i.ll)|expos(e|ing))\b/i.test(combined)) {
-    return "CAUTION: This message may be sextortion or blackmail, which is a crime. Do not comply with demands. Save evidence and report to the FBI IC3 (ic3.gov) and the platform.";
-  }
-
-  // threats / violence
-  if (/\b(kill\s*you|i.ll\s*kill|murder|death\s*threat|dox|x\s*(your|ur)\s*address)\b/i.test(combined)) {
+  // Threats of violence / doxxing (criminal)
+  if (/\b(kill\s*you|i.ll\s*kill|murder|death\s*threat|dox|doxx|x\s*(your|ur)\s*address|find\s*(your|ur)\s*(house|address|home|family))\b/i.test(combined)) {
     return "WARNING: This message may contain threats of violence or doxxing, which are criminal offenses. Save this message and report to local law enforcement.";
   }
 
