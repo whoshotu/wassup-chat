@@ -12,6 +12,39 @@ export interface DecodeResult {
   vibeScore: number;
   suggestions: { source: string; target: string }[];
   status: string;
+  safetyWarning?: string;
+}
+
+// Content safety detection - flags illegal/harmful content
+export function detectSafetyWarnings(text: string, translatedText: string): string | undefined {
+  const combined = `${text} ${translatedText}`.toLowerCase();
+
+  // CSAM / Child exploitation
+  if (/\b(cp|csam|pedo|paedo|child\s*(porn|sex|exploit|abuse|traffick)| underage|preteen|jailbait|loli)\b/i.test(combined)) {
+    return "WARNING: This message may reference child exploitation material (CSAM), which is illegal. We strongly advise against engaging with this user. Consider reporting them to the platform and to NCMEC (CyberTipline.org) or your local authorities.";
+  }
+
+  // Human trafficking / exploitation
+  if (/\b(traffick|forced\s*(sex|labor|prostit)|slave|exploit\s*(girl|boy|teen|minor)|sell\s*(girl|boy|teen|minor))\b/i.test(combined)) {
+    return "WARNING: This message may reference human trafficking or exploitation, which is illegal. We strongly advise against engaging with this user. Consider reporting them to the platform and to the National Human Trafficking Hotline (1-888-373-7888).";
+  }
+
+  // Non-consensual content
+  if (/\b(revenge\s*porn|leak\s*(nude|onlyfans|private)|hack(ed)?\s*(onlyfans|account)|stolen\s*(nude|content))\b/i.test(combined)) {
+    return "CAUTION: This message may reference non-consensual intimate content distribution, which is illegal in many jurisdictions. Do not share or distribute such content.";
+  }
+
+  // Sextortion / blackmail
+  if (/\b(sextort|blackmail|pay\s*(me|i.ll\s*(leak|share|post))|send\s*(money|crypto|btc|bitcoin)\s*(or|else|or\s*i.ll)|expos(e|ing))\b/i.test(combined)) {
+    return "CAUTION: This message may be sextortion or blackmail, which is a crime. Do not comply with demands. Save evidence and report to the FBI IC3 (ic3.gov) and the platform.";
+  }
+
+  // threats / violence
+  if (/\b(kill\s*you|i.ll\s*kill|murder|death\s*threat|dox|x\s*(your|ur)\s*address)\b/i.test(combined)) {
+    return "WARNING: This message may contain threats of violence or doxxing, which are criminal offenses. Save this message and report to local law enforcement.";
+  }
+
+  return undefined;
 }
 
 // Lightweight language detection (regex + heuristics)
@@ -270,7 +303,8 @@ export async function decodeMessage(text: string, targetLanguage: string = "Engl
     toneTags,
     vibeScore,
     suggestions: pairedSuggestions,
-    status: 'generated'
+    status: 'generated',
+    safetyWarning: detectSafetyWarnings(text, translatedText)
   };
 }
 

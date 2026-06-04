@@ -40,6 +40,7 @@ type DecodeResult = {
   suggestions: { source: string; target: string }[];
   timestamp: number;
   error?: string;
+  safetyWarning?: string;
 }
 
 export function DecoderPage() {
@@ -218,6 +219,15 @@ export function DecoderPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
+                  {result.safetyWarning && (
+                    <div className="bg-red-500/10 border-2 border-red-500/50 rounded-xl p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+                        <span className="text-sm font-bold text-red-400 uppercase tracking-wider">Safety Alert</span>
+                      </div>
+                      <p className="text-sm text-red-300 leading-relaxed">{result.safetyWarning}</p>
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <p className="text-2xl font-semibold text-white leading-tight">
                       {result.translatedText}
@@ -331,6 +341,12 @@ export function DecoderPage() {
                     <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-white/10 text-slate-500 uppercase">
                       {h.sourceLanguage}
                     </Badge>
+                    {h.safetyWarning && (
+                      <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-red-500/50 text-red-400 uppercase">
+                        <AlertCircle className="w-2.5 h-2.5 mr-1" />
+                        Flagged
+                      </Badge>
+                    )}
                     <span className="text-[10px] text-slate-600">
                       {new Date(h.timestamp).toLocaleString()}
                     </span>
