@@ -30,3 +30,9 @@ dist-ssr
 core
 
 .github/
+
+# Ignore the extension codebase to keep the main web app clean
+wassup-extension/
+
+# Stale test results
+TEST_RESULTS.md

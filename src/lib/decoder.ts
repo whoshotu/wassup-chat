@@ -1,6 +1,5 @@
 /**
  * Client-Side Decoder Logic
- * Ported from scaffolder-service/generator.js
  * Optimized for frontend execution without backend dependencies.
  */
 
