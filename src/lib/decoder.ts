@@ -4,7 +4,7 @@
  * Optional Gemini AI integration for enhanced analysis.
  */
 
-import { analyzeWithGemini } from './gemini';
+import { analyzeWithGemini, paraphraseWithGemini } from './gemini';
 import { canUseGemini, canDisambiguate, recordUsage } from './geminiRateLimit';
 import { detectAmbiguity, applyLocalDisambiguation } from './idiomHelper';
 
@@ -333,7 +333,6 @@ export async function decodeMessage(
     // Try Gemini disambiguation first if key is present and quota allows
     if (geminiApiKey && canDisambiguate().allowed) {
       try {
-        const { paraphraseWithGemini } = await import('./gemini'); // dynamic import to avoid circular deps
         const paraphrased = await paraphraseWithGemini(text, geminiApiKey);
         text = paraphrased;
         disambiguated = true;
