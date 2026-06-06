@@ -44,6 +44,23 @@ Rules:
 - Return ONLY the JSON object, no extra text or markdown
 - Do NOT include any explanation outside the JSON`;
 
+export async function paraphraseWithGemini(text: string, apiKey: string): Promise<string> {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({
+    model: MODEL,
+    // Simple system prompt for paraphrasing
+    systemInstruction: 'You are an assistant that rewrites messages in clear, neutral English while preserving the original intent. Return ONLY the rewritten sentence, no extra text.',
+  });
+
+  const prompt = `Paraphrase this message in neutral English, preserving meaning:\n"${text}"`;
+  const result = await model.generateContent(prompt);
+  const response = result.response;
+  const raw = response.text().trim();
+  // Remove any surrounding backticks or markdown fences
+  const cleaned = raw.replace(/^```\s*\n?/i, '').replace(/\n?```$/i, '').trim();
+  return cleaned;
+}
+
 export async function analyzeWithGemini(
   text: string,
   targetLanguage: string,
@@ -54,6 +71,9 @@ export async function analyzeWithGemini(
     model: MODEL,
     systemInstruction: SYSTEM_PROMPT,
   });
+
+
+
 
   const prompt = `Analyze this chat message. The creator's primary language is ${targetLanguage}.\n\nMessage: "${text}"`;
 

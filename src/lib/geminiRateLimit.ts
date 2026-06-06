@@ -56,6 +56,22 @@ export function canUseGemini(): { allowed: boolean; reason?: string } {
   return { allowed: true };
 }
 
+/** Check if we can use Gemini for a disambiguation step (reserve a few slots) */
+export function canDisambiguate(): { allowed: boolean; reason?: string } {
+  const usage = loadUsage();
+  const now = Date.now();
+  const oneMinuteAgo = now - 60_000;
+  const recentTimestamps = usage.timestamps.filter(ts => ts > oneMinuteAgo);
+  // Reserve 2 slots per minute for disambiguation
+  if (recentTimestamps.length >= RPM_LIMIT - 2) {
+    return { allowed: false, reason: 'Gemini disambiguation rate limit reached' };
+  }
+  if (usage.dailyCount >= RPD_LIMIT) {
+    return { allowed: false, reason: 'Daily limit reached' };
+  }
+  return { allowed: true };
+}
+
 /** Record a successful Gemini API call */
 export function recordUsage(): void {
   const usage = loadUsage();

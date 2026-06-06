@@ -5,7 +5,8 @@
  */
 
 import { analyzeWithGemini } from './gemini';
-import { canUseGemini, recordUsage } from './geminiRateLimit';
+import { canUseGemini, canDisambiguate, recordUsage } from './geminiRateLimit';
+import { detectAmbiguity, applyLocalDisambiguation } from './idiomHelper';
 
 export interface DecodeResult {
   originalText: string;
@@ -19,7 +20,10 @@ export interface DecodeResult {
   safetyWarning?: string;
   slangTerms?: { term: string; meaning: string; context: string }[];
   usedGemini?: boolean;
+  disambiguated?: boolean;
+  disambiguationNote?: string;
 }
+
 
 // Content safety detection - flags ONLY illegal activities
 // Adult/NSFW content is allowed - this app is for cam models
@@ -287,6 +291,7 @@ export async function decodeMessage(
   targetLanguage: string = "English",
   geminiApiKey?: string
 ): Promise<DecodeResult> {
+  const original = text;
   // Try Gemini AI path if key is provided
   if (geminiApiKey) {
     const { allowed } = canUseGemini();
@@ -307,6 +312,8 @@ export async function decodeMessage(
           safetyWarning,
           slangTerms: analysis.slangTerms,
           usedGemini: true,
+          disambiguated: false,
+          disambiguationNote: '',
         };
       } catch (err) {
         console.warn('Gemini failed, falling back to free decoder:', err);
@@ -318,15 +325,30 @@ export async function decodeMessage(
   // Free flow: Google Translate + local analysis
   let sourceLanguage = detectLanguage(text);
   
-  // Fallback: if heuristic says English but text has very few English words, use auto-detect
-  if (sourceLanguage === "English") {
-    const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-    const englishWords = ['the', 'and', 'you', 'are', 'for', 'that', 'with', 'this', 'have', 'from', 'they', 'been', 'will', 'would', 'there', 'their', 'what', 'about', 'which', 'when', 'make', 'like', 'just', 'over', 'such', 'take', 'than', 'them', 'some', 'could', 'other', 'more', 'very', 'also', 'after', 'well', 'only', 'into', 'year', 'your', 'good', 'know', 'want', 'dont', "don't", 'think', 'really', 'should', 'could', 'would'];
-    const englishCount = words.filter(w => englishWords.includes(w)).length;
-    const englishRatio = words.length > 0 ? englishCount / words.length : 1;
-    // If less than 20% of words are common English words, use auto-detect
-    if (englishRatio < 0.2 && words.length >= 3) {
-      sourceLanguage = "Auto-detect";
+  // ----- Disambiguation step -----
+  let disambiguated = false;
+  let disambiguationNote = '';
+  const { ambiguous, matches } = detectAmbiguity(text, sourceLanguage);
+  if (ambiguous) {
+    // Try Gemini disambiguation first if key is present and quota allows
+    if (geminiApiKey && canDisambiguate().allowed) {
+      try {
+        const { paraphraseWithGemini } = await import('./gemini'); // dynamic import to avoid circular deps
+        const paraphrased = await paraphraseWithGemini(text, geminiApiKey);
+        text = paraphrased;
+        disambiguated = true;
+        disambiguationNote = 'Gemini paraphrase used';
+        // Record usage for this Gemini call (separate from analysis call)
+        recordUsage();
+      } catch (e) {
+        console.warn('Gemini disambiguation failed, falling back to local:', e);
+      }
+    }
+    if (!disambiguated) {
+      const result = applyLocalDisambiguation(text, matches, sourceLanguage);
+      text = result.clarified;
+      disambiguated = true;
+      disambiguationNote = result.note;
     }
   }
 
@@ -369,7 +391,7 @@ export async function decodeMessage(
   }
 
   return {
-    originalText: text,
+    originalText: original,
     translatedText,
     sourceLanguage,
     targetLanguage,
@@ -377,8 +399,10 @@ export async function decodeMessage(
     vibeScore,
     suggestions: pairedSuggestions,
     status: 'generated',
-    safetyWarning: detectSafetyWarnings(text, translatedText),
+    safetyWarning: detectSafetyWarnings(original, translatedText),
     usedGemini: false,
+    disambiguated,
+    disambiguationNote,
   };
 }
 
