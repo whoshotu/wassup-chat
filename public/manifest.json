@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Wassup - Decode What Your Viewers Are Really Saying",
   "short_name": "Wassup",
-  "version": "1.2.0",
+  "version": "1.0.1",
   "description": "A chat decoder that helps performers understand what viewers are really saying in slang and foreign languages",
   "permissions": [
     "storage",
