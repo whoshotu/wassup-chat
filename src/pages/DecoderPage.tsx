@@ -45,6 +45,8 @@ type DecodeResult = {
   safetyWarning?: string;
   slangTerms?: { term: string; meaning: string; context: string }[];
   usedGemini?: boolean;
+  disambiguated?: boolean;
+  disambiguationNote?: string;
 }
 
 export function DecoderPage() {
@@ -265,6 +267,15 @@ export function DecoderPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
+                  {result.disambiguated && result.disambiguationNote && (
+                    <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-xl p-4 mb-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+                        <span className="text-sm font-bold text-amber-400 uppercase tracking-wider">Disambiguation</span>
+                      </div>
+                      <p className="text-sm text-amber-300">{result.disambiguationNote}</p>
+                    </div>
+                  )}
                   {result.safetyWarning && (
                     <div className="bg-red-500/10 border-2 border-red-500/50 rounded-xl p-4 space-y-2">
                       <div className="flex items-center gap-2">
@@ -274,6 +285,7 @@ export function DecoderPage() {
                       <p className="text-sm text-red-300 leading-relaxed">{result.safetyWarning}</p>
                     </div>
                   )}
+
                   <div className="space-y-1">
                     <p className="text-2xl font-semibold text-white leading-tight">
                       {result.translatedText}
