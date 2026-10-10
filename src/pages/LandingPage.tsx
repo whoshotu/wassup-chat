@@ -21,7 +21,7 @@ export default function LandingPage() {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-black/50" />
           </span>
           <p className="text-black text-xs sm:text-sm font-bold tracking-tight text-center">
-            🚀 <span className="font-black">NEW:</span> Wassup Pro Extension — translate live chat on <span className="underline underline-offset-2">any platform</span>, right in your browser.
+            🚀 <strong className="font-black">NEW:</strong> Wassup Pro Extension. Translate live chat on <span className="underline underline-offset-2">any platform</span>, right in your browser.
           </p>
           <span className="hidden sm:flex items-center gap-1 bg-black/15 hover:bg-black/25 transition-colors text-black text-xs font-black px-3 py-1 rounded-full shrink-0">
             Get it on Ko-fi
@@ -232,7 +232,7 @@ export default function LandingPage() {
                 </h2>
               </div>
               <p className="text-slate-400 text-lg mb-10 leading-relaxed">
-                The <strong className="text-white">Wassup Pro Extension</strong> sits directly inside your browser. It auto-detects and translates foreign chat messages on <strong className="text-white">any platform</strong> — Chaturbate, Stripchat, Discord, and more — in real time, without copy-pasting anything.
+                The <strong className="text-white">Wassup Pro Extension</strong> sits directly inside your browser. It auto-detects and translates foreign chat messages on <strong className="text-white">any platform</strong>: Chaturbate, Stripchat, Discord, and more. In real time, without copy-pasting anything.
               </p>
 
               {/* Feature Pills */}
@@ -261,7 +261,7 @@ export default function LandingPage() {
                   className="inline-flex items-center gap-2 h-14 px-8 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-2xl text-base shadow-xl shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
                 >
                   <Chrome className="w-5 h-5" />
-                  Get Pro Extension — Ko-fi
+                  Get Pro Extension on Ko-fi
                 </a>
                 <div className="flex flex-col justify-center">
                   <span className="text-xs text-slate-500 font-medium">One-time purchase · 30-day pass</span>
