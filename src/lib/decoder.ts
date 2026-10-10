@@ -26,8 +26,6 @@ export interface DecodeResult {
 export function detectSafetyWarnings(text: string, translatedText: string): string | undefined {
   const combined = `${text} ${translatedText}`.toLowerCase();
 
-  // CSAM / Child exploitation (hard no - illegal everywhere)
-  // Covers: cp, csam, pedo, grooming, child/kid/teen abuse, Spanish/Portuguese terms
   const csamPatterns = [
     /\b(cp|c\.p|c_p|csam|pedo|paedo|pedofile|jailbait|loli)\b/i,
     /child\s*(porn|sex|exploit|abuse|traffick|nude|video|pic|image|content)/i,
@@ -54,7 +52,6 @@ export function detectSafetyWarnings(text: string, translatedText: string): stri
     }
   }
 
-  // Animal abuse
   const animalPatterns = [
     /animal\s*(abuse|cruelt|hurt|torture|kill)/i,
     /\bbestialit/i,
@@ -74,12 +71,10 @@ export function detectSafetyWarnings(text: string, translatedText: string): stri
     }
   }
 
-  // Human trafficking / exploitation of minors
   if (/\b(traffick|forced\s*(sex|labor|prostit)|slave|exploit\s*(girl|boy|teen|minor)|sell\s*(girl|boy|teen|minor))\b/i.test(combined)) {
     return "ILLEGAL CONTENT DETECTED: This message appears to reference human trafficking or exploitation, which is a serious crime. Do NOT engage with this user. Report to the National Human Trafficking Hotline (1-888-373-7888) and local law enforcement.";
   }
 
-  // Threats of violence / doxxing (criminal)
   if (/\b(kill\s*you|i.ll\s*kill|murder|death\s*threat|dox|doxx|x\s*(your|ur)\s*address|find\s*(your|ur)\s*(house|address|home|family))\b/i.test(combined)) {
     return "WARNING: This message may contain threats of violence or doxxing, which are criminal offenses. Save this message and report to local law enforcement.";
   }
@@ -87,97 +82,107 @@ export function detectSafetyWarnings(text: string, translatedText: string): stri
   return undefined;
 }
 
-// Lightweight language detection (regex + heuristics)
+// Language detection — script-based first, then exclusive vocabulary per language
+// Portuguese checked before Spanish to avoid shared-word false matches
 export function detectLanguage(text: string = "") {
   const t = text.toLowerCase();
-  
-  // Scripts
+
+  // Script-based (unambiguous)
   if (/[\u3040-\u309f\u30a0-\u30ff]/.test(text)) return "Japanese";
   if (/[\uac00-\ud7af]/.test(text)) return "Korean";
   if (/[\u4e00-\u9fff]/.test(text)) return "Chinese";
   if (/[\u0600-\u06FF]/.test(text)) return "Arabic";
   if (/[\u0400-\u04FF]/.test(text)) return "Russian";
+  if (/[\u0e00-\u0e7f]/.test(text)) return "Thai";
+  if (/[\u0900-\u097f]/.test(text)) return "Hindi";
 
-  // Common words/phrases heuristics
-  if (t.includes('hola') || t.includes('gracias') || t.includes('amigo') || t.includes('por favor') || t.includes('de locos') || t.includes('qué') || t.includes('que ') || t.includes('quiero') || t.includes('tengo') || t.includes('está') || t.includes('como ') || t.includes('tú ') || t.includes('tu ') || t.includes('muy') || t.includes('pero') || t.includes('también') || t.includes('puedo') || t.includes('necesito') || t.includes('quieres') || t.includes('vendes') || t.includes('refieres') || t.includes('tuyos') || t.includes('bonita') || t.includes('hermoso') || t.includes('mi amor') || t.includes('bebé') || t.includes('cariño') || t.includes('español')) return "Spanish";
-  if (t.includes('bonjour') || t.includes('merci') || t.includes('coucou') || t.includes('ami') || t.includes('vie') || t.includes('ouf') || t.includes('je ') || t.includes('tu ') || t.includes('toi') || t.includes('nous') || t.includes('ils') || t.includes('elles') || t.includes('peux') || t.includes('être') || t.includes('avoir') || t.includes('faire') || t.includes('très') || t.includes('aussi') || t.includes('mais') || t.includes('avec') || t.includes('pour') || t.includes('dans') || t.includes('cest') || t.includes('c\'est') || t.includes('français')) return "French";
-  if (t.includes('hallo') || t.includes('danke') || t.includes('bitte') || t.includes('ich ') || t.includes('du ') || t.includes('nicht') || t.includes('ist ') || t.includes('ein ') || t.includes('eine') || t.includes('und ') || t.includes('aber') || t.includes('auch') || t.includes('kann') || t.includes('wir') || t.includes('haben') || t.includes('werden') || t.includes('deutsch')) return "German";
-  if (t.includes('ciao') || t.includes('amore') || t.includes('grazie') || t.includes('prego') || t.includes('sono') || t.includes('sei ') || t.includes('tu ') || t.includes('noi') || t.includes('loro') || t.includes('anche') || t.includes('però') || t.includes('puoi') || t.includes('possiamo') || t.includes('italiano')) return "Italian";
-  if (t.includes('olá') || t.includes('oi ') || t.includes('obrigado') || t.includes('tudo') || t.includes('quero') || t.includes('bom ') || t.includes('jeito') || t.includes('você') || t.includes('está') || t.includes('não') || t.includes('também') || t.includes('para') || t.includes('como') || t.includes('porque') || t.includes('português')) return "Portuguese";
-  if (t.includes('apa kabar') || t.includes('terima kasih') || t.includes('halo') || t.includes('saya') || t.includes('kamu') || t.includes('ini') || t.includes('itu') || t.includes('dengan') || t.includes('untuk') || t.includes('indonesia')) return "Indonesian";
-  
-  return "English"; // Fallback
+  // Portuguese-exclusive (before Spanish — many shared words)
+  if (/\b(você|voce|tudo bem|obrigado|obrigada|tchau|saudade|olá|não\b|também|então|isso|aqui|gente|bom dia|boa tarde|boa noite|arrasou|mano\b)\b/.test(t)) return "Portuguese";
+
+  // Spanish-exclusive
+  if (/\b(hola|gracias|amigo|amiga|por favor|quiero|tengo|está|muy|pero|también|puedo|necesito|bonita|hermoso|cariño|buenas|buenos|claro|chico|chica|señor|señora|usted|vosotros|nosotros|chévere|órale|chido)\b/.test(t)) return "Spanish";
+
+  // French-exclusive
+  if (/\b(bonjour|merci|coucou|salut|bonsoir|oui\b|être|avoir|faire|très|aussi|mais|avec|dans|c'est|j'ai|je suis|tu es|vous|pourquoi|parce que|trop\b|meuf|mec\b|kiff|grave\b|chelou)\b/.test(t)) return "French";
+
+  // German-exclusive
+  if (/\b(hallo|danke|bitte|nicht|ist\b|ein\b|eine|und\b|aber|auch|kann|wir\b|haben|werden|warum|guten|morgen|abend|nacht|schön|krass|geil\b|alter\b|digga)\b/.test(t)) return "German";
+
+  // Italian-exclusive
+  if (/\b(ciao|grazie|prego|buongiorno|buonasera|sono\b|sei\b|noi\b|loro|anche|però|puoi|possiamo|perché|quanto|bello|bella|dai\b|boh\b|magari|figurati)\b/.test(t)) return "Italian";
+
+  // Indonesian-exclusive
+  if (/\b(apa kabar|terima kasih|saya|kamu|dengan|untuk|selamat|bagaimana|sangat|sudah|belum|bisa|tidak)\b/.test(t)) return "Indonesian";
+
+  // Vietnamese — diacritics + common words
+  if (/[àáâãèéêìíòóôõùúýăđơư]/.test(t) && /\b(bạn|tôi|không|được|này|với|cho|của|và|trong)\b/.test(t)) return "Vietnamese";
+
+  return "English";
 }
 
-// Client-side translation fallback (Lite version)
+// Client-side translation fallback dictionary
 const DICT: Record<string, Record<string, string>> = {
-  Spanish: { 
-    'hello': 'hola', 'love': 'amor', 'friend': 'amigo', 'beautiful': 'hermosa', 'thanks': 'gracias', 'please': 'por favor', 'how': 'como',
-    'de locos': 'insane/amazing',
-    'tocho': 'huge/giant',
-    'tio': 'guy/dude',
-    'guay': 'cool/awesome',
-    'chulo': 'cool/nice',
-    'pasta': 'money',
-    'curro': 'work/job',
-    'vale': 'okay/agree',
-    'venga': 'come on/let\'s go'
+  Spanish: {
+    'hello': 'hola', 'love': 'amor', 'friend': 'amigo', 'beautiful': 'hermosa',
+    'thanks': 'gracias', 'please': 'por favor',
+    'de locos': 'insane/amazing', 'tocho': 'huge/giant', 'tio': 'guy/dude',
+    'guay': 'cool/awesome', 'chulo': 'cool/nice', 'pasta': 'money',
+    'curro': 'work/job', 'vale': 'okay/agree', 'venga': 'come on/lets go',
+    'chévere': 'cool/great', 'buena onda': 'good vibes', 'qué padre': 'how cool',
+    'órale': 'alright/lets go', 'chido': 'cool', 'mande': 'excuse me/yes',
   },
-  French: { 
-    'hello': 'bonjour', 'love': 'amour', 'friend': 'ami', 'beautiful': 'belle', 'thanks': 'merci', 'life': 'vie', 'this is': "c'est",
-    "that's life": "c'est la vie",
-    "my friend": "mon ami",
-    'ouf': 'crazy/insane',
-    'meuf': 'girl/woman',
-    'mec': 'guy/man',
-    'trop': 'very/really',
-    'nickel': 'perfect',
-    'boss': 'working/grinding',
-    'kiff': 'love/enjoy',
-    'grave': 'totally/for real'
+  French: {
+    'hello': 'bonjour', 'love': 'amour', 'friend': 'ami', 'beautiful': 'belle',
+    'thanks': 'merci', "that's life": "c'est la vie", "my friend": "mon ami",
+    'ouf': 'crazy/insane', 'meuf': 'girl/woman', 'mec': 'guy/man',
+    'trop': 'very/really', 'nickel': 'perfect', 'kiff': 'love/enjoy',
+    'grave': 'totally/for real', 'chelou': 'sketchy/weird',
+    'carrément': 'absolutely', 'laisse tomber': 'forget it',
+    'ça roule': 'all good', 'trop bien': 'so good', 'chanmé': 'awesome',
   },
   Internet: {
-    'no cap': 'for real/honestly',
-    'cap': 'lie/fake',
-    'rizz': 'charisma/game',
-    'skibidi': 'weird/chaotic',
-    'gyatt': 'damn (exclamation of surprise)',
-    'bussin': 'delicious/amazing',
-    'pog': 'awesome/epic',
-    'poggers': 'awesome/epic',
-    'lfg': 'let\'s freaking go/excited',
-    'bet': 'i agree/for sure',
-    'finna': 'about to',
-    'on god': 'i swear/honestly',
-    'fire': 'amazing/cool',
-    'lit': 'exciting/great',
-    'clutch': 'perfect timing/saving the day',
-    'sus': 'suspicious',
-    'ratio': 'you got more dislikes than likes',
-    'mid': 'average/mediocre',
-    'delulu': 'delusional',
-    'slay': 'did amazing',
-    'w': 'win/great',
-    'l': 'loss/bad'
+    'no cap': 'for real/honestly', 'cap': 'lie/fake', 'rizz': 'charisma/charm',
+    'skibidi': 'weird/chaotic', 'gyatt': 'wow', 'bussin': 'amazing/delicious',
+    'pog': 'awesome/epic', 'poggers': 'awesome/epic', 'lfg': 'lets go/excited',
+    'bet': 'i agree/for sure', 'finna': 'about to', 'on god': 'i swear/honestly',
+    'fire': 'amazing/cool', 'lit': 'exciting/great', 'clutch': 'perfect timing',
+    'sus': 'suspicious', 'ratio': 'more dislikes than likes', 'mid': 'average/mediocre',
+    'delulu': 'delusional', 'slay': 'did amazing', 'w': 'win/great', 'l': 'loss/bad',
+    'npc': 'someone acting robotic/clueless', 'based': 'respectable opinion',
+    'cringe': 'embarrassing', 'lowkey': 'kind of/secretly', 'highkey': 'very much/openly',
+    'hits different': 'feels uniquely special', 'understood the assignment': 'did perfectly',
+    'its giving': 'it feels like', 'sending me': 'making me laugh hard',
+    'rent free': 'stuck in my head', 'simp': 'overly devoted to someone',
+    'goat': 'greatest of all time', 'fr fr': 'for real', 'periodt': 'and thats final',
+    'sheesh': 'wow/impressive', 'gg': 'good game/well done', 'hype': 'excited',
+    'vibe check': 'checking the mood', 'ate': 'did an amazing job',
+    'serving': 'looking amazing', 'mother': 'icon/legend',
+    'clout': 'social media fame', 'caught in 4k': 'caught on camera',
+    'w rizz': 'very charming', 'no rizz': 'no charm at all',
   },
-  German: { 'hello': 'hallo', 'love': 'liebe', 'friend': 'freund', 'thanks': 'danke', 'please': 'bitte' },
-  Portuguese: { 
-    'hello': 'olá', 'love': 'amor', 'friend': 'amigo', 'thanks': 'obrigado', 'everything': 'tudo',
-    'good': 'bom',
-    'so': 'tão',
-    'way': 'jeito',
-    'hurt': 'machucar',
-    'you': 'te',
-    'want': 'quero',
-    'i want to hurt you in such a good way': 'quero te machucar de um jeito tão bom'
+  German: {
+    'hello': 'hallo', 'love': 'liebe', 'friend': 'freund', 'thanks': 'danke',
+    'please': 'bitte', 'krass': 'crazy/intense', 'geil': 'awesome',
+    'alter': 'dude/man', 'digga': 'dude (informal)',
   },
-  Italian: { 'hello': 'ciao', 'love': 'amore', 'friend': 'amico', 'thanks': 'grazie', 'please': 'prego' },
+  Portuguese: {
+    'hello': 'olá', 'love': 'amor', 'friend': 'amigo', 'thanks': 'obrigado',
+    'saudade': 'longing/missing someone deeply', 'arrasou': 'you killed it',
+    'mano': 'dude/bro', 'cara': 'dude', 'que saudade': 'i missed you so much',
+    'boa': 'nice/good job',
+  },
+  Italian: {
+    'hello': 'ciao', 'love': 'amore', 'friend': 'amico', 'thanks': 'grazie',
+    'please': 'prego', 'dai': 'come on', 'boh': 'i dont know',
+    'magari': 'maybe/i wish', 'figurati': 'dont mention it',
+    'mamma mia': 'oh my goodness',
+  },
 };
 
 export async function translateText(text: string, from: string, to: string): Promise<string> {
   if (!text || from === to) return text;
-  
-  // 1. First Pass: Apply custom Internet/Slang dictionary (keeps our edge)
+
+  // Pre-process internet slang
   let preProcessedText = text;
   for (const [en, local] of Object.entries(DICT['Internet'])) {
     const regex = new RegExp(`\\b${local.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
@@ -185,41 +190,35 @@ export async function translateText(text: string, from: string, to: string): Pro
   }
 
   try {
-    // 2. Second Pass: Global Client-Side Translation via Free API (e.g. Google's public endpoint)
-    // Map language names to basic ISO codes
     const langCodes: Record<string, string> = {
-      'Auto-detect': 'auto', 'English': 'en', 'Spanish': 'es', 'French': 'fr', 'German': 'de',
-      'Portuguese': 'pt', 'Italian': 'it', 'Japanese': 'ja', 'Korean': 'ko',
-      'Hindi': 'hi', 'Indonesian': 'id', 'Vietnamese': 'vi', 'Thai': 'th'
+      'Auto-detect': 'auto', 'English': 'en', 'Spanish': 'es', 'French': 'fr',
+      'German': 'de', 'Portuguese': 'pt', 'Italian': 'it', 'Japanese': 'ja',
+      'Korean': 'ko', 'Chinese': 'zh', 'Arabic': 'ar', 'Russian': 'ru',
+      'Hindi': 'hi', 'Indonesian': 'id', 'Vietnamese': 'vi', 'Thai': 'th',
+      'Turkish': 'tr', 'Polish': 'pl', 'Dutch': 'nl', 'Swedish': 'sv',
+      'Ukrainian': 'uk', 'Romanian': 'ro', 'Greek': 'el', 'Hebrew': 'he',
     };
-    
-    // Default to 'auto' if source language not in our list
-    const sourceCode = langCodes[from] || 'auto';
+
+    const sourceCode = from === 'Auto-detect' ? 'auto' : (langCodes[from] || 'auto');
     const targetCode = langCodes[to] || 'en';
 
-    const url = `https://translate.googleapis.com/translate_a/single?client=gtx&sl=${sourceCode}&tl=${targetCode}&dt=t&q=${encodeURIComponent(preProcessedText)}`;
-    
-    const response = await fetch(url);
-    if (!response.ok) throw new Error('Translation request failed');
-    
-    const json = await response.json();
-    
-    // Google Translate returns an array of arrays: json[0] is the translated segments
-    let finalTranslation = '';
-    if (json && json[0]) {
-       json[0].forEach((segment: any) => {
-          if (segment[0]) finalTranslation += segment[0];
-       });
-    }
+    // MyMemory API — free, no key required, 5000 words/day per IP
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(preProcessedText)}&langpair=${sourceCode}|${targetCode}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!response.ok) throw new Error('MyMemory request failed');
 
-    return finalTranslation || preProcessedText;
+    const json = await response.json();
+    if (json?.responseStatus === 200 && json?.responseData?.translatedText) {
+      const result = json.responseData.translatedText;
+      if (result.toUpperCase().includes('PLEASE SELECT')) return preProcessedText;
+      return result;
+    }
+    throw new Error('MyMemory returned no translation');
   } catch (error) {
-    console.error('Client-side translation API failed, falling back to basic dictionary:', error);
-    
-    // 3. Fallback: Local Dictionary Loop if API fails (offline mode)
+    console.error('Translation API failed, falling back to dictionary:', error);
+
     const dicts = [DICT[from], DICT[to]].filter(Boolean);
     let translated = preProcessedText;
-    
     for (const dict of dicts) {
       for (const [en, local] of Object.entries(dict!)) {
         const wordToFind = to === 'English' ? local : en;
@@ -228,7 +227,6 @@ export async function translateText(text: string, from: string, to: string): Pro
         translated = translated.replace(re, replacement);
       }
     }
-    
     return translated;
   }
 }
@@ -236,50 +234,83 @@ export async function translateText(text: string, from: string, to: string): Pro
 export function computeVibeScore(text: string, tones: string[]) {
   let score = 3.0;
   const lower = text.toLowerCase();
-  
+
   if (text.includes('!')) score += 0.5;
   if (text.includes('?')) score -= 0.2;
-  
-  // Slang weights
   if (lower.includes('lfg') || lower.includes('pog') || lower.includes('fire')) score += 1.0;
   if (lower.includes('no cap') || lower.includes('on god')) score += 0.5;
   if (lower.includes('mid') || lower.includes('sus') || lower.includes('ratio')) score -= 0.8;
-  
   if (tones.includes('hype') || tones.includes('excited')) score += 1.0;
   if (tones.includes('flirty') || tones.includes('compliment')) score += 0.5;
   if (tones.includes('negative')) score -= 1.5;
   if (tones.includes('sarcastic')) score -= 0.5;
-  
+
   return Math.max(0, Math.min(5, score));
 }
+
+// Words that signal excitement even when paired with swearing
+const HYPE_AMPLIFIERS = [
+  'amazing', 'awesome', 'insane', 'incredible', 'unbelievable', 'love',
+  'great', 'best', 'goat', 'fire', 'lit', 'pog', 'poggers', 'lfg',
+  'sheesh', 'bussin', 'slay', 'ate', 'serving', 'killed it', 'goated',
+];
 
 export function detectTones(text: string): string[] {
   const lower = text.toLowerCase();
   const tones: string[] = [];
 
   // Hype / Excitement
-  if (lower.includes('lfg') || lower.includes('pog') || lower.includes('fire') || lower.includes('lit') || lower.includes('wow') || lower.includes('amazing')) tones.push('hype');
-  
-  // Questions / Confusion
-  if (lower.includes('?') || lower.includes('how') || lower.includes('what') || lower.includes('huh') || lower.includes('wait what')) tones.push('question');
-  
-  // Gratitude / Support
-  if (lower.includes('please') || lower.includes('thanks') || lower.includes('thank you') || lower.includes('gg') || lower.includes('nice stream')) tones.push('supportive');
-  
-  // Flirty / Compliments
-  if (lower.includes('love') || lower.includes('beautiful') || lower.includes('sexy') || lower.includes('hot') || lower.includes('baby') || lower.includes('sweetie')) {
-     if (lower.includes('baby') || lower.includes('sweetie') || lower.includes('honey')) tones.push('flirty');
-     else tones.push('compliment');
+  if (/\b(lfg|pog|poggers|fire|lit|wow|amazing|insane|sheesh|bussin|goat|slay|ate|incredible|unbelievable)\b/.test(lower) || text.includes('!!')) {
+    tones.push('hype');
   }
-  
-  // Negative / Aggressive
-  if (lower.includes('fuck') || lower.includes('shit') || lower.includes('hate') || lower.includes('bad') || lower.includes('stop')) tones.push('negative');
-  
-  // Sarcastic (Heuristics)
-  if (lower.includes('yeah right') || lower.includes('sure buddy') || lower.includes('okay lol') || lower.includes('nice try')) tones.push('sarcastic');
+
+  // Questions
+  if (lower.includes('?') || /\b(how|what|when|where|why|who|huh|wait what)\b/.test(lower)) {
+    tones.push('question');
+  }
+
+  // Gratitude / Support
+  if (/\b(please|thanks|thank you|gg|good game|nice stream|appreciate|love your|great stream)\b/.test(lower)) {
+    tones.push('supportive');
+  }
+
+  // Flirty / Compliments
+  if (/\b(love|beautiful|sexy|hot|baby|sweetie|honey|gorgeous|stunning|cutie|handsome)\b/.test(lower)) {
+    if (/\b(baby|sweetie|honey|gorgeous|stunning|cutie|my love)\b/.test(lower)) {
+      tones.push('flirty');
+    } else {
+      tones.push('compliment');
+    }
+  }
+
+  // Negative — only flag if NOT alongside hype amplifiers
+  const hasSwear = /\b(fuck|shit|hate|stupid|idiot|terrible|worst|awful|garbage|trash)\b/.test(lower);
+  if (hasSwear) {
+    const hasHypeContext = HYPE_AMPLIFIERS.some(word => lower.includes(word));
+    if (!hasHypeContext) {
+      tones.push('negative');
+    } else {
+      if (!tones.includes('hype')) tones.push('hype');
+    }
+  }
+
+  // Aggressive (always flag regardless of context)
+  if (/\b(hate you|kill|die|shut up|get out|go away|loser|worthless)\b/.test(lower)) {
+    if (!tones.includes('negative')) tones.push('negative');
+  }
+
+  // Sarcastic
+  if (/\b(yeah right|sure buddy|okay lol|nice try|totally|definitely not|obviously)\b/.test(lower)) {
+    tones.push('sarcastic');
+  }
+
+  // All caps or triple exclamation = excited
+  if (text.includes('!!!') || (text === text.toUpperCase() && text.replace(/\s/g, '').length > 3)) {
+    if (!tones.includes('hype')) tones.push('excited');
+  }
 
   if (tones.length === 0) tones.push('neutral');
-  return tones;
+  return [...new Set(tones)];
 }
 
 export async function decodeMessage(
@@ -287,7 +318,6 @@ export async function decodeMessage(
   targetLanguage: string = "English",
   geminiApiKey?: string
 ): Promise<DecodeResult> {
-  // Try Gemini AI path if key is provided
   if (geminiApiKey) {
     const { allowed } = canUseGemini();
     if (allowed) {
@@ -310,21 +340,17 @@ export async function decodeMessage(
         };
       } catch (err) {
         console.warn('Gemini failed, falling back to free decoder:', err);
-        // Fall through to free flow below
       }
     }
   }
 
-  // Free flow: Google Translate + local analysis
   let sourceLanguage = detectLanguage(text);
-  
-  // Fallback: if heuristic says English but text has very few English words, use auto-detect
+
   if (sourceLanguage === "English") {
     const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 2);
-    const englishWords = ['the', 'and', 'you', 'are', 'for', 'that', 'with', 'this', 'have', 'from', 'they', 'been', 'will', 'would', 'there', 'their', 'what', 'about', 'which', 'when', 'make', 'like', 'just', 'over', 'such', 'take', 'than', 'them', 'some', 'could', 'other', 'more', 'very', 'also', 'after', 'well', 'only', 'into', 'year', 'your', 'good', 'know', 'want', 'dont', "don't", 'think', 'really', 'should', 'could', 'would'];
+    const englishWords = ['the', 'and', 'you', 'are', 'for', 'that', 'with', 'this', 'have', 'from', 'they', 'been', 'will', 'would', 'there', 'their', 'what', 'about', 'which', 'when', 'make', 'like', 'just', 'over', 'such', 'take', 'than', 'them', 'some', 'could', 'other', 'more', 'very', 'also', 'after', 'well', 'only', 'into', 'year', 'your', 'good', 'know', 'want', 'dont', "don't", 'think', 'really', 'should'];
     const englishCount = words.filter(w => englishWords.includes(w)).length;
     const englishRatio = words.length > 0 ? englishCount / words.length : 1;
-    // If less than 20% of words are common English words, use auto-detect
     if (englishRatio < 0.2 && words.length >= 3) {
       sourceLanguage = "Auto-detect";
     }
@@ -336,35 +362,26 @@ export async function decodeMessage(
 
   const baseSuggestions: string[] = [];
   if (toneTags.includes('question')) baseSuggestions.push('That is a great question, let me think about it for a second.');
-  if (toneTags.includes('compliment')) baseSuggestions.push('Thank you so much! You are too sweet. 😉');
-  if (toneTags.includes('flirty')) baseSuggestions.push('Oh really? Tell me more... 😏');
+  if (toneTags.includes('compliment')) baseSuggestions.push('Thank you so much! You are too sweet.');
+  if (toneTags.includes('flirty')) baseSuggestions.push('Oh really? Tell me more...');
   if (toneTags.includes('negative')) baseSuggestions.push('I appreciate the feedback, but lets keep it positive here.');
-  if (toneTags.includes('positive') || toneTags.includes('excited')) baseSuggestions.push('I love the energy! What is your favorite part so far?');
+  if (toneTags.includes('hype') || toneTags.includes('excited')) baseSuggestions.push('I love the energy! What is your favorite part so far?');
   if (baseSuggestions.length === 0) {
-    if (sourceLanguage !== targetLanguage) {
-      baseSuggestions.push('Thanks for hanging out! Where are you watching from?');
-    } else {
-      baseSuggestions.push('How is everyone doing today?');
-    }
+    baseSuggestions.push(sourceLanguage !== targetLanguage
+      ? 'Thanks for hanging out! Where are you watching from?'
+      : 'How is everyone doing today?'
+    );
   }
 
-  // Translate suggestions back to source language
   const pairedSuggestions: { source: string; target: string }[] = [];
   for (const suggestion of baseSuggestions) {
-    // target represents the user's language (base text is in English, so we translate English -> Target)
     const targetText = targetLanguage !== 'English' ? await translateText(suggestion, 'English', targetLanguage) : suggestion;
-    
-    // source represents the input language (base text is in English, so we translate English -> Source)
     let sourceText = suggestion;
     if (sourceLanguage !== 'English' && sourceLanguage !== 'Auto-detect') {
       sourceText = await translateText(suggestion, 'English', sourceLanguage);
-    } else if (sourceLanguage === 'Auto-detect') {
-      // When auto-detect was used, translate to target language as best effort
-      sourceText = targetText;
-    } else if (sourceLanguage === targetLanguage) {
+    } else if (sourceLanguage === 'Auto-detect' || sourceLanguage === targetLanguage) {
       sourceText = targetText;
     }
-    
     pairedSuggestions.push({ source: sourceText, target: targetText });
   }
 
