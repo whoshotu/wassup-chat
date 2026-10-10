@@ -719,8 +719,8 @@ export function DecoderPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-slate-200 flex flex-col">
       {/* Top Header */}
-      <header className="px-6 py-4 flex items-center justify-between border-b border-white/5 bg-[#0a0a0c]/80 backdrop-blur-md sticky top-0 z-50">
-        <button onClick={() => navigate('/')} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+      <header className="px-6 py-4 flex items-center justify-between border-b border-white/5 bg-[#0a0a0c]/80 backdrop-blur-md sticky top-0 z-40">
+        <button onClick={() => navigate('/')} className="flex items-center gap-3 hover:opacity-80 transition-opacity" aria-label="Go to homepage">
           <div className="bg-primary p-1.5 rounded-lg shadow-lg shadow-primary/20">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
@@ -731,13 +731,14 @@ export function DecoderPage() {
           <button 
             onClick={toggleTheme}
             className="p-2 hover:bg-white/5 rounded-full transition-colors"
+            aria-label="Toggle Theme"
           >
             {theme === 'dark' ? <Sun className="w-5 h-5 text-slate-400" /> : <Moon className="w-5 h-5 text-slate-400" />}
           </button>
         </div>
       </header>
 
-      <main className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full pb-24 lg:pt-12">
+      <main className="flex-1 px-4 pt-4 md:px-8 md:pt-8 max-w-6xl mx-auto w-full !pb-28 lg:pt-12">
         {/* Dynamic Tab Rendering */}
         <div className="animate-in fade-in duration-300">
           {activeTab === 'decode' && renderDecode()}
@@ -758,6 +759,7 @@ export function DecoderPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            aria-label={tab.label}
             className={cn(
               "flex flex-col items-center gap-1 min-w-[60px] transition-all relative py-1",
               activeTab === tab.id ? "text-primary" : "text-slate-600 hover:text-slate-400"
@@ -765,7 +767,7 @@ export function DecoderPage() {
           >
             {activeTab === tab.id && <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full -z-10" />}
             <tab.icon className={cn("w-5 h-5", activeTab === tab.id && "fill-primary/20")} />
-            <span className="text-[10px] font-bold uppercase tracking-tighter">{tab.label}</span>
+            <span className="text-xs font-bold uppercase tracking-tighter">{tab.label}</span>
           </button>
         ))}
       </nav>

@@ -1,11 +1,10 @@
 /**
  * Gemini API Client
- * Uses gemini-2.0-flash for enhanced translation, tone analysis, slang breakdown, and suggestions.
+ * Uses gemini-1.5-flash for enhanced translation, tone analysis, slang breakdown, and suggestions.
  * Single API call per decode — structured JSON response.
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { type DecodeResult } from './decoder';
 
 export interface GeminiAnalysis {
   translatedText: string;
@@ -16,7 +15,7 @@ export interface GeminiAnalysis {
   vibeScore: number;
 }
 
-const MODEL = 'gemini-2.0-flash';
+const MODEL = 'gemini-1.5-flash';
 
 const SYSTEM_PROMPT = `You are a chat message analyzer for a content creator app. The creator receives messages from international viewers in multiple languages.
 
