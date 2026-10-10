@@ -10,7 +10,7 @@ export default function LandingPage() {
     <div className="min-h-screen bg-[#0a0a0c] text-white overflow-x-hidden">
       {/* Top Announcement Bar */}
       <a
-        href="https://ko-fi.com/wassupapp"
+        href="https://ko-fi.com/s/443060ea79"
         target="_blank"
         rel="noopener noreferrer"
         className="block w-full bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-400 hover:from-amber-500 hover:via-amber-400 hover:to-yellow-300 transition-all duration-300 group"
@@ -255,7 +255,7 @@ export default function LandingPage() {
               {/* CTA */}
               <div className="flex flex-col sm:flex-row items-start gap-4">
                 <a
-                  href="https://ko-fi.com/wassupapp"
+                  href="https://ko-fi.com/s/443060ea79"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 h-14 px-8 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-2xl text-base shadow-xl shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
