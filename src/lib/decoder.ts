@@ -163,6 +163,7 @@ const DICT: Record<string, Record<string, string>> = {
     'serving': 'looking amazing', 'mother': 'icon/legend',
     'clout': 'social media fame', 'caught in 4k': 'caught on camera',
     'w rizz': 'very charming', 'no rizz': 'no charm at all',
+    'y': 'why', 'u': 'you', 'r': 'are', 'ur': 'your', 'bc': 'because', 'rn': 'right now', 'tbh': 'to be honest', 'imo': 'in my opinion',
   },
   German: {
     'hello': 'hallo', 'love': 'liebe', 'friend': 'freund', 'thanks': 'danke',
