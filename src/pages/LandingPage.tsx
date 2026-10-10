@@ -1,13 +1,34 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Sparkles, MessageSquare, Globe, Heart, Shield, Zap } from "lucide-react";
+import { Sparkles, MessageSquare, Globe, Heart, Shield, Zap, Chrome, MousePointer2, Languages, Eye, Cpu } from "lucide-react";
 
 export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-white overflow-x-hidden">
+      {/* Top Announcement Bar */}
+      <a
+        href="https://ko-fi.com/wassupapp"
+        target="_blank"
+        rel="noopener noreferrer"
+        className="block w-full bg-gradient-to-r from-amber-600 via-amber-500 to-yellow-400 hover:from-amber-500 hover:via-amber-400 hover:to-yellow-300 transition-all duration-300 group"
+      >
+        <div className="flex items-center justify-center gap-3 px-4 py-2.5">
+          <span className="relative flex h-2 w-2 shrink-0">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-black/30 opacity-75" />
+            <span className="relative inline-flex rounded-full h-2 w-2 bg-black/50" />
+          </span>
+          <p className="text-black text-xs sm:text-sm font-bold tracking-tight text-center">
+            🚀 <span className="font-black">NEW:</span> Wassup Pro Extension — translate live chat on <span className="underline underline-offset-2">any platform</span>, right in your browser.
+          </p>
+          <span className="hidden sm:flex items-center gap-1 bg-black/15 hover:bg-black/25 transition-colors text-black text-xs font-black px-3 py-1 rounded-full shrink-0">
+            Get it on Ko-fi
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+          </span>
+        </div>
+      </a>
       {/* Background Glow */}
       <div className="fixed inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 blur-[120px] rounded-full" />
@@ -181,6 +202,135 @@ export default function LandingPage() {
                 <p className="text-slate-400 leading-relaxed">{f.desc}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Extension Pro Ad Section */}
+      <section className="relative z-10 py-32 px-6 overflow-hidden">
+        {/* Background glow for this section */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[60%] bg-amber-500/5 blur-[140px] rounded-full" />
+        </div>
+
+        <div className="max-w-7xl mx-auto">
+          {/* Section Label */}
+          <div className="flex justify-center mb-12">
+            <div className="inline-flex items-center gap-2 bg-amber-500/10 border border-amber-500/20 rounded-full px-4 py-1.5">
+              <Chrome className="w-4 h-4 text-amber-400" />
+              <span className="text-xs font-bold uppercase tracking-widest text-amber-400">Chrome Extension · Pro Upgrade</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            {/* Left: Copy */}
+            <div>
+              <div className="flex items-center gap-3 mb-6">
+                <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.1]">
+                  Translate live chat,{' '}
+                  <span className="text-amber-400">without leaving the stream.</span>
+                </h2>
+              </div>
+              <p className="text-slate-400 text-lg mb-10 leading-relaxed">
+                The <strong className="text-white">Wassup Pro Extension</strong> sits directly inside your browser. It auto-detects and translates foreign chat messages on <strong className="text-white">any platform</strong> — Chaturbate, Stripchat, Discord, and more — in real time, without copy-pasting anything.
+              </p>
+
+              {/* Feature Pills */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
+                {[
+                  { icon: MousePointer2, label: 'Right-click any message to decode' },
+                  { icon: Languages, label: 'Auto-translates live chat feeds' },
+                  { icon: Eye, label: 'Inline translation overlays' },
+                  { icon: Cpu, label: 'Gemini AI deep decoding mode' },
+                ].map((f, i) => (
+                  <div key={i} className="flex items-center gap-3 bg-white/[0.03] border border-white/5 rounded-2xl px-4 py-3">
+                    <div className="bg-amber-500/15 p-2 rounded-xl shrink-0">
+                      <f.icon className="w-4 h-4 text-amber-400" />
+                    </div>
+                    <span className="text-sm font-medium text-slate-300">{f.label}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* CTA */}
+              <div className="flex flex-col sm:flex-row items-start gap-4">
+                <a
+                  href="https://ko-fi.com/wassupapp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 h-14 px-8 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-2xl text-base shadow-xl shadow-amber-500/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+                >
+                  <Chrome className="w-5 h-5" />
+                  Get Pro Extension — Ko-fi
+                </a>
+                <div className="flex flex-col justify-center">
+                  <span className="text-xs text-slate-500 font-medium">One-time purchase · 30-day pass</span>
+                  <span className="text-xs text-slate-600">Works on Chrome, Brave &amp; Edge</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right: Browser Chrome Mockup */}
+            <div className="relative">
+              <div className="absolute -inset-4 bg-amber-500/10 blur-[60px] rounded-full opacity-40" />
+              <div className="relative bg-[#121216] border border-white/10 rounded-[2rem] overflow-hidden shadow-2xl">
+                {/* Browser Bar */}
+                <div className="bg-[#0a0a0c] px-5 py-3 border-b border-white/5 flex items-center gap-3">
+                  <div className="flex gap-1.5">
+                    <div className="w-2.5 h-2.5 rounded-full bg-red-500/50" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-amber-500/50" />
+                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500/50" />
+                  </div>
+                  <div className="flex-1 bg-white/5 rounded-lg px-3 py-1 text-[11px] text-slate-600 font-mono">
+                    chaturbate.com/yourroom
+                  </div>
+                  <div className="flex items-center gap-1 bg-amber-500/20 border border-amber-500/30 px-2 py-1 rounded-lg">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    <span className="text-[10px] font-bold text-amber-400 uppercase tracking-wider">PRO</span>
+                  </div>
+                </div>
+
+                {/* Simulated Chat Feed */}
+                <div className="p-6 space-y-4 bg-gradient-to-b from-[#0d0d10] to-[#0a0a0c]">
+                  {[
+                    { user: 'mariela_mx', msg: 'eres increíble amiga!! 🔥', translated: '✨  you\'re incredible girl!!', badge: 'SPANISH' },
+                    { user: 'kim_kr99', msg: '너무 재밌어요 ㅋㅋ', translated: '✨  so fun lol', badge: 'KOREAN' },
+                    { user: 'mathieu_fr', msg: 'tu es trop belle ce soir', translated: '💕  you\'re so beautiful tonight', badge: 'FRENCH' },
+                  ].map((item, i) => (
+                    <div key={i} className="space-y-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xs font-bold text-primary">{item.user}</span>
+                        <span className="text-sm text-slate-300">{item.msg}</span>
+                      </div>
+                      <div className="flex items-center gap-2 ml-2">
+                        <span className="inline-block bg-amber-500/15 text-amber-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/20 uppercase tracking-wider">{item.badge}</span>
+                        <span className="text-xs text-slate-400 italic">{item.translated}</span>
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Widget Preview */}
+                  <div className="mt-4 bg-white rounded-xl overflow-hidden shadow-xl border border-white/10 text-black text-sm">
+                    <div className="bg-gradient-to-r from-black to-gray-900 px-4 py-2.5 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="bg-red-500 w-5 h-5 rounded-md flex items-center justify-center text-[10px] font-black text-white">W</div>
+                        <span className="text-white text-xs font-bold">Wassup Decoder</span>
+                      </div>
+                      <span className="text-[9px] font-black text-white/50 bg-white/10 px-1.5 py-0.5 rounded-full border border-white/10">PRO</span>
+                    </div>
+                    <div className="p-3">
+                      <p className="font-bold text-sm text-gray-900 mb-0.5">You are so beautiful tonight</p>
+                      <p className="text-xs text-gray-400 italic mb-2">"tu es trop belle ce soir"</p>
+                      <div className="flex gap-1.5">
+                        <span className="bg-black text-white text-[9px] font-bold px-2 py-0.5 rounded-full">FRENCH</span>
+                        <span className="bg-gray-100 text-gray-600 text-[9px] font-bold px-2 py-0.5 rounded-full">FLIRTY</span>
+                        <span className="bg-gray-100 text-gray-600 text-[9px] font-bold px-2 py-0.5 rounded-full">COMPLIMENT</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
