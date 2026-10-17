@@ -89,7 +89,8 @@ export function detectSafetyWarnings(text: string, translatedText: string): stri
 // Language detection — script-based first, then exclusive vocabulary per language
 // Portuguese checked before Spanish to avoid shared-word false matches
 export function detectLanguage(text: string = "") {
-  const t = text.toLowerCase();
+  const t = text.toLowerCase().normalize('NFC');
+  if (!t.trim()) return 'Unknown';
 
   // Script-based (unambiguous)
   if (/[\u3040-\u309f\u30a0-\u30ff]/.test(text)) return "Japanese";
@@ -100,28 +101,32 @@ export function detectLanguage(text: string = "") {
   if (/[\u0e00-\u0e7f]/.test(text)) return "Thai";
   if (/[\u0900-\u097f]/.test(text)) return "Hindi";
 
-  // Portuguese-exclusive (before Spanish — many shared words)
-  if (/\b(você|voce|tudo bem|obrigado|obrigada|tchau|saudade|olá|não\b|também|então|isso|aqui|gente|bom dia|boa tarde|boa noite|arrasou|mano\b)\b/.test(t)) return "Portuguese";
-
-  // Spanish-exclusive
-  if (/\b(hola|gracias|amigo|amiga|por favor|quiero|tengo|está|muy|pero|también|puedo|necesito|bonita|hermoso|cariño|buenas|buenos|claro|chico|chica|señor|señora|usted|vosotros|nosotros|chévere|órale|chido)\b/.test(t)) return "Spanish";
-
-  // French-exclusive
-  if (/\b(bonjour|merci|coucou|salut|bonsoir|oui\b|être|avoir|faire|très|aussi|mais|avec|dans|c'est|j'ai|je suis|tu es|vous|pourquoi|parce que|trop\b|meuf|mec\b|kiff|grave\b|chelou)\b/.test(t)) return "French";
-
-  // German-exclusive
-  if (/\b(hallo|danke|bitte|nicht|ist\b|ein\b|eine|und\b|aber|auch|kann|wir\b|haben|werden|warum|guten|morgen|abend|nacht|schön|krass|geil\b|alter\b|digga)\b/.test(t)) return "German";
-
-  // Italian-exclusive
-  if (/\b(ciao|grazie|prego|buongiorno|buonasera|sono\b|sei\b|noi\b|loro|anche|però|puoi|possiamo|perché|quanto|bello|bella|dai\b|boh\b|magari|figurati)\b/.test(t)) return "Italian";
-
-  // Indonesian-exclusive
-  if (/\b(apa kabar|terima kasih|saya|kamu|dengan|untuk|selamat|bagaimana|sangat|sudah|belum|bisa|tidak)\b/.test(t)) return "Indonesian";
-
-  // Vietnamese — diacritics + common words
-  if (/[àáâãèéêìíòóôõùúýăđơư]/.test(t) && /\b(bạn|tôi|không|được|này|với|cho|của|và|trong)\b/.test(t)) return "Vietnamese";
-
-  return "English";
+  // Score several language-specific words together so short messages containing
+  // a shared token do not get confidently assigned to the wrong language.
+  const vocab: Record<string, string[]> = {
+    Spanish: ['hola', 'gracias', 'quiero', 'tengo', 'pero', 'puedo', 'necesito', 'también', 'porque', 'buenas', 'buenos', 'chica', 'chico', 'usted', 'nosotros', 'ustedes', 'qué', 'estás', 'estoy', 'muy', 'para', 'con', 'como', 'dónde', 'guapa', 'hermosa'],
+    Portuguese: ['você', 'voce', 'obrigado', 'obrigada', 'saudade', 'tchau', 'não', 'nao', 'também', 'então', 'entao', 'estou', 'gente', 'vocês', 'legal', 'muito', 'bom', 'boa', 'beleza', 'valeu', 'mano'],
+    French: ['bonjour', 'merci', 'salut', 'bonsoir', 'oui', 'avec', 'dans', 'pourquoi', 'parce', 'très', 'tres', 'aussi', 'mais', 'vous', 'nous', 'je suis', "j'ai", "c'est", 'ça', 'pas', 'quoi', 'bien', 'beaucoup'],
+    German: ['hallo', 'danke', 'bitte', 'nicht', 'und', 'aber', 'auch', 'kann', 'wir', 'haben', 'warum', 'guten', 'morgen', 'schön', 'schon', 'ich', 'ist', 'eine', 'das', 'mit', 'für', 'freund'],
+    Italian: ['ciao', 'grazie', 'prego', 'buongiorno', 'buonasera', 'sono', 'anche', 'però', 'pero', 'puoi', 'perché', 'perche', 'bello', 'bella', 'dai', 'boh', 'magari', 'figurati', 'che', 'non', 'come', 'molto'],
+    Indonesian: ['apa kabar', 'terima kasih', 'saya', 'kamu', 'dengan', 'untuk', 'selamat', 'bagaimana', 'sangat', 'sudah', 'belum', 'bisa', 'tidak', 'aku', 'yang', 'ini', 'kita'],
+    Vietnamese: ['bạn', 'tôi', 'không', 'được', 'này', 'với', 'cho', 'của', 'và', 'trong', 'xin chào', 'cảm ơn', 'mình', 'đang'],
+    English: ['the', 'and', 'you', 'are', 'for', 'that', 'with', 'this', 'have', 'from', 'they', 'been', 'will', 'would', 'there', 'their', 'what', 'about', 'which', 'when', 'your', 'thanks', 'hello', 'love', 'good', 'know', 'want', 'really', 'should', 'how', 'is', 'it'],
+  };
+  const tokens: string[] = t.match(/[\p{L}’']+/gu) || [];
+  const scores = Object.entries(vocab).map(([language, words]) => {
+    let score = 0;
+    for (const word of words) {
+      if (word.includes(' ')) {
+        if (t.includes(word)) score += 2;
+      } else if (tokens.includes(word)) score += 1;
+    }
+    return { language, score };
+  }).sort((a, b) => b.score - a.score);
+  const [best, runnerUp] = scores;
+  if (best.score >= 2 && best.score - runnerUp.score >= 1) return best.language;
+  if (best.language === 'English' && best.score >= 1) return 'English';
+  return 'Auto-detect';
 }
 
 // Client-side translation fallback dictionary
@@ -332,10 +337,13 @@ export async function decodeMessage(
         const analysis = await analyzeWithGemini(text, targetLanguage, geminiApiKey);
         recordUsage();
         const safetyWarning = detectSafetyWarnings(text, analysis.translatedText);
+        const detectedLanguage = analysis.sourceLanguage && analysis.sourceLanguage !== 'Unknown'
+          ? analysis.sourceLanguage
+          : detectLanguage(text);
         return {
           originalText: text,
           translatedText: analysis.translatedText,
-          sourceLanguage: analysis.sourceLanguage,
+          sourceLanguage: detectedLanguage,
           targetLanguage,
           toneTags: analysis.toneTags,
           vibeScore: analysis.vibeScore,
@@ -395,25 +403,30 @@ export async function decodeMessage(
   const vibeScore = computeVibeScore(text, toneTags);
 
   const baseSuggestions: string[] = [];
-  if (toneTags.includes('question')) baseSuggestions.push('That is a great question, let me think about it for a second.');
-  if (toneTags.includes('compliment')) baseSuggestions.push('Thank you so much! You are too sweet.');
-  if (toneTags.includes('flirty')) baseSuggestions.push('Oh really? Tell me more...');
-  if (toneTags.includes('negative')) baseSuggestions.push('I appreciate the feedback, but lets keep it positive here.');
-  if (toneTags.includes('hype') || toneTags.includes('excited')) baseSuggestions.push('I love the energy! What is your favorite part so far?');
-  if (baseSuggestions.length === 0) {
-    baseSuggestions.push(sourceLanguage !== targetLanguage
-      ? 'Thanks for hanging out! Where are you watching from?'
-      : 'How is everyone doing today?'
-    );
+  const lowerText = original.toLowerCase();
+  if (toneTags.includes('question')) {
+    baseSuggestions.push('Good question 😄 What do you think?');
+    if (/where|from|country|city|d[oó]nde|de d[oó]nde|d[oó]nde eres/.test(lowerText)) baseSuggestions.push('I’m here with you now 😊 Where are you watching from?');
   }
+  if (toneTags.includes('compliment')) baseSuggestions.push('Aww, thank you! You just made me smile 💕');
+  if (toneTags.includes('flirty')) baseSuggestions.push('You’re sweet 😘 What else do you like?');
+  if (toneTags.includes('negative')) baseSuggestions.push('Let’s keep it kind 💛 What would you like to see instead?');
+  if (toneTags.includes('hype') || toneTags.includes('excited')) baseSuggestions.push('Yesss, I love your energy 🔥 What’s your favorite part?');
+  if (toneTags.includes('supportive')) baseSuggestions.push('Thank you for being here, that means a lot 🫶');
+  if (baseSuggestions.length === 0) {
+    baseSuggestions.push('Hey you 😊 How’s your day going?');
+    if (original.trim().endsWith('?')) baseSuggestions.push('I’m glad you asked 😄 Tell me a little more.');
+    else baseSuggestions.push('What are you up to today?');
+  }
+  const replies = [...new Set(baseSuggestions)].slice(0, 3);
 
   const pairedSuggestions: { source: string; target: string }[] = [];
-  for (const suggestion of baseSuggestions) {
+  for (const suggestion of replies) {
     const targetText = targetLanguage !== 'English' ? await translateText(suggestion, 'English', targetLanguage) : suggestion;
     let sourceText = suggestion;
-    if (sourceLanguage !== 'English' && sourceLanguage !== 'Auto-detect') {
+    if (sourceLanguage !== 'English' && sourceLanguage !== 'Auto-detect' && sourceLanguage !== 'Unknown') {
       sourceText = await translateText(suggestion, 'English', sourceLanguage);
-    } else if (sourceLanguage === 'Auto-detect' || sourceLanguage === targetLanguage) {
+    } else if (sourceLanguage === 'Auto-detect' || sourceLanguage === 'Unknown') {
       sourceText = targetText;
     }
     pairedSuggestions.push({ source: sourceText, target: targetText });
