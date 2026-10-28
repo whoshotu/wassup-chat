@@ -1,0 +1,420 @@
+/**
+ * Client-Side Decoder Logic
+ * Optimized for frontend execution without backend dependencies.
+ * Optional Gemini AI integration for enhanced analysis.
+ */
+
+import { analyzeWithGemini } from './gemini';
+import { canUseGemini, recordUsage } from './geminiRateLimit';
+
+export interface DecodeResult {
+  originalText: string;
+  translatedText: string;
+  sourceLanguage: string;
+  targetLanguage: string;
+  toneTags: string[];
+  vibeScore: number;
+  suggestions: { source: string; target: string }[];
+  status: string;
+  safetyWarning?: string;
+  slangTerms?: { term: string; meaning: string; context: string }[];
+  usedGemini?: boolean;
+}
+
+// Content safety detection - flags ONLY illegal activities
+// Adult/NSFW content is allowed - this app is for cam models
+export function detectSafetyWarnings(text: string, translatedText: string): string | undefined {
+  const combined = `${text} ${translatedText}`.toLowerCase();
+
+  const csamPatterns = [
+    /\b(cp|c\.p|c_p|csam|pedo|paedo|pedofile|jailbait|loli)\b/i,
+    /child\s*(porn|sex|exploit|abuse|traffick|nude|video|pic|image|content)/i,
+    /kid\s*(porn|sex|exploit|abuse|nude|video|pic|image|content)/i,
+    /teen\s*(porn|sex|nude|leak|video|pic|image)/i,
+    /\bunder\s*age\b/i,
+    /\bpreteen\b/i,
+    /\bgroom(ing|er|ed)\b/i,
+    /boylove|girllove/i,
+    /porno\s*infantil/i,
+    /ni[ñn]o\s*(porn|sex|nude|video)/i,
+    /ni[ñn]a\s*(porn|sex|nude|video)/i,
+    /menor\s*(de\s*edad|porn|sex|nude)/i,
+    /pedófilo/i,
+    /sell\s*(cp|child|kid|teen|minor|underage)/i,
+    /\b(cp|child|kid)\s*(collection|archive|videos?|pics?|images?|content)\b/i,
+    /child\s*abuse/i,
+    /abuso\s*infantil/i,
+    /sexual\s*(abuse|exploit)\s*(of|with)\s*(child|kid|minor|teen)/i,
+  ];
+  for (const pattern of csamPatterns) {
+    if (pattern.test(combined)) {
+      return "ILLEGAL CONTENT DETECTED: This message appears to reference child sexual abuse material (CSAM) or child exploitation. This is a serious crime. Do NOT engage with this user. Report immediately to NCMEC CyberTipline (CyberTipline.org) and the platform. Preserve all evidence.";
+    }
+  }
+
+  const animalPatterns = [
+    /animal\s*(abuse|cruelt|hurt|torture|kill)/i,
+    /\bbestialit/i,
+    /\bzoophile/i,
+    /\bzoo\s*sex\b/i,
+    /fuck(ing)?\s*(a|the)\s*(dog|cat|horse|animal)/i,
+    /dog\s*(sex|fuck)/i,
+    /cat\s*(sex|fuck)/i,
+    /animal\s*(sex|fuck)/i,
+    /\banimal\s*cruelty\b/i,
+    /\bpuppy\s*(abuse|torture|hurt|kill)/i,
+    /\bkitten\s*(abuse|torture|hurt|kill)/i,
+  ];
+  for (const pattern of animalPatterns) {
+    if (pattern.test(combined)) {
+      return "ILLEGAL CONTENT DETECTED: This message appears to reference animal abuse or bestiality, which is a criminal offense. Do NOT engage with this user. Report to local law enforcement and the platform.";
+    }
+  }
+
+  if (/\b(traffick|forced\s*(sex|labor|prostit)|slave|exploit\s*(girl|boy|teen|minor)|sell\s*(girl|boy|teen|minor))\b/i.test(combined)) {
+    return "ILLEGAL CONTENT DETECTED: This message appears to reference human trafficking or exploitation, which is a serious crime. Do NOT engage with this user. Report to the National Human Trafficking Hotline (1-888-373-7888) and local law enforcement.";
+  }
+
+  if (/\b(kill\s*you|i.ll\s*kill|murder|death\s*threat|dox|doxx|x\s*(your|ur)\s*address|find\s*(your|ur)\s*(house|address|home|family))\b/i.test(combined)) {
+    return "WARNING: This message may contain threats of violence or doxxing, which are criminal offenses. Save this message and report to local law enforcement.";
+  }
+
+  return undefined;
+}
+
+// Language detection — script-based first, then exclusive vocabulary per language
+// Portuguese checked before Spanish to avoid shared-word false matches
+export function detectLanguage(text: string = "") {
+  const normalized = text.toLowerCase().normalize('NFC');
+  const t = normalized;
+  if (!t.trim()) return 'Unknown';
+
+  // Script-based (unambiguous)
+  if (/[\u3040-\u309f\u30a0-\u30ff]/.test(text)) return "Japanese";
+  if (/[\uac00-\ud7af]/.test(text)) return "Korean";
+  if (/[\u4e00-\u9fff]/.test(text)) return "Chinese";
+  if (/[\u0600-\u06FF]/.test(text)) return "Arabic";
+  if (/[\u0400-\u04FF]/.test(text)) return "Russian";
+  if (/[\u0e00-\u0e7f]/.test(text)) return "Thai";
+  if (/[\u0900-\u097f]/.test(text)) return "Hindi";
+
+  // Score distinctive function words and phrases instead of treating one shared
+  // word (such as "no", "me", or "que") as proof of a language.
+  const vocab: Record<string, string[]> = {
+    Spanish: ['hola', 'gracias', 'quiero', 'tengo', 'pero', 'puedo', 'necesito', 'también', 'porque', 'buenas', 'buenos', 'chica', 'chico', 'usted', 'nosotros', 'ustedes', 'qué', 'estás', 'estoy', 'muy', 'para', 'con', 'como', 'dónde', 'guapa', 'hermosa'],
+    Portuguese: ['você', 'voce', 'obrigado', 'obrigada', 'saudade', 'tchau', 'não', 'nao', 'também', 'então', 'entao', 'estou', 'gente', 'vocês', 'vocês', 'legal', 'muito', 'bom', 'boa', 'beleza', 'valeu', 'mano', 'obrigada'],
+    French: ['bonjour', 'merci', 'salut', 'bonsoir', 'oui', 'avec', 'dans', 'pourquoi', 'parce', 'très', 'tres', 'aussi', 'mais', 'vous', 'nous', 'je suis', 'j’ai', 'j\'ai', 'c’est', 'c\'est', 'ça', 'pas', 'quoi', 'bien', 'beaucoup'],
+    German: ['hallo', 'danke', 'bitte', 'nicht', 'und', 'aber', 'auch', 'kann', 'wir', 'haben', 'warum', 'guten', 'morgen', 'schön', 'schon', 'ich', 'ist', 'eine', 'das', 'mit', 'für', 'freund'],
+    Italian: ['ciao', 'grazie', 'prego', 'buongiorno', 'buonasera', 'sono', 'anche', 'però', 'pero', 'puoi', 'perché', 'perche', 'bello', 'bella', 'dai', 'boh', 'magari', 'figurati', 'che', 'non', 'come', 'molto'],
+    Indonesian: ['apa kabar', 'terima kasih', 'saya', 'kamu', 'dengan', 'untuk', 'selamat', 'bagaimana', 'sangat', 'sudah', 'belum', 'bisa', 'tidak', 'aku', 'yang', 'ini', 'kita'],
+    Vietnamese: ['bạn', 'tôi', 'không', 'được', 'này', 'với', 'cho', 'của', 'và', 'trong', 'xin chào', 'cảm ơn', 'mình', 'đang'],
+    English: ['the', 'and', 'you', 'are', 'for', 'that', 'with', 'this', 'have', 'from', 'they', 'been', 'will', 'would', 'there', 'their', 'what', 'about', 'which', 'when', 'your', 'thanks', 'hello', 'love', 'good', 'know', 'want', 'really', 'should', 'how', 'is', 'it'],
+  };
+  const tokens: string[] = t.match(/[\p{L}’']+/gu) || [];
+  const scores = Object.entries(vocab).map(([language, words]) => {
+    let score = 0;
+    for (const word of words) {
+      if (word.includes(' ')) {
+        if (t.includes(word)) score += 2;
+      } else if (tokens.includes(word)) score += 1;
+    }
+    return { language, score };
+  }).sort((a, b) => b.score - a.score);
+  const [best, runnerUp] = scores;
+  if (best.score >= 2 && best.score - runnerUp.score >= 1) return best.language;
+  if (best.language === 'English' && best.score >= 1) return 'English';
+  return 'Auto-detect';
+}
+
+// Client-side translation fallback dictionary
+const DICT: Record<string, Record<string, string>> = {
+  Spanish: {
+    'hello': 'hola', 'love': 'amor', 'friend': 'amigo', 'beautiful': 'hermosa',
+    'thanks': 'gracias', 'please': 'por favor',
+    'de locos': 'insane/amazing', 'tocho': 'huge/giant', 'tio': 'guy/dude',
+    'guay': 'cool/awesome', 'chulo': 'cool/nice', 'pasta': 'money',
+    'curro': 'work/job', 'vale': 'okay/agree', 'venga': 'come on/lets go',
+    'chévere': 'cool/great', 'buena onda': 'good vibes', 'qué padre': 'how cool',
+    'órale': 'alright/lets go', 'chido': 'cool', 'mande': 'excuse me/yes',
+  },
+  French: {
+    'hello': 'bonjour', 'love': 'amour', 'friend': 'ami', 'beautiful': 'belle',
+    'thanks': 'merci', "that's life": "c'est la vie", "my friend": "mon ami",
+    'ouf': 'crazy/insane', 'meuf': 'girl/woman', 'mec': 'guy/man',
+    'trop': 'very/really', 'nickel': 'perfect', 'kiff': 'love/enjoy',
+    'grave': 'totally/for real', 'chelou': 'sketchy/weird',
+    'carrément': 'absolutely', 'laisse tomber': 'forget it',
+    'ça roule': 'all good', 'trop bien': 'so good', 'chanmé': 'awesome',
+  },
+  Internet: {
+    'no cap': 'for real/honestly', 'cap': 'lie/fake', 'rizz': 'charisma/charm',
+    'skibidi': 'weird/chaotic', 'gyatt': 'wow', 'bussin': 'amazing/delicious',
+    'pog': 'awesome/epic', 'poggers': 'awesome/epic', 'lfg': 'lets go/excited',
+    'bet': 'i agree/for sure', 'finna': 'about to', 'on god': 'i swear/honestly',
+    'fire': 'amazing/cool', 'lit': 'exciting/great', 'clutch': 'perfect timing',
+    'sus': 'suspicious', 'ratio': 'more dislikes than likes', 'mid': 'average/mediocre',
+    'delulu': 'delusional', 'slay': 'did amazing', 'w': 'win/great', 'l': 'loss/bad',
+    'npc': 'someone acting robotic/clueless', 'based': 'respectable opinion',
+    'cringe': 'embarrassing', 'lowkey': 'kind of/secretly', 'highkey': 'very much/openly',
+    'hits different': 'feels uniquely special', 'understood the assignment': 'did perfectly',
+    'its giving': 'it feels like', 'sending me': 'making me laugh hard',
+    'rent free': 'stuck in my head', 'simp': 'overly devoted to someone',
+    'goat': 'greatest of all time', 'fr fr': 'for real', 'periodt': 'and thats final',
+    'sheesh': 'wow/impressive', 'gg': 'good game/well done', 'hype': 'excited',
+    'vibe check': 'checking the mood', 'ate': 'did an amazing job',
+    'serving': 'looking amazing', 'mother': 'icon/legend',
+    'clout': 'social media fame', 'caught in 4k': 'caught on camera',
+    'w rizz': 'very charming', 'no rizz': 'no charm at all',
+  },
+  German: {
+    'hello': 'hallo', 'love': 'liebe', 'friend': 'freund', 'thanks': 'danke',
+    'please': 'bitte', 'krass': 'crazy/intense', 'geil': 'awesome',
+    'alter': 'dude/man', 'digga': 'dude (informal)',
+  },
+  Portuguese: {
+    'hello': 'olá', 'love': 'amor', 'friend': 'amigo', 'thanks': 'obrigado',
+    'saudade': 'longing/missing someone deeply', 'arrasou': 'you killed it',
+    'mano': 'dude/bro', 'cara': 'dude', 'que saudade': 'i missed you so much',
+    'boa': 'nice/good job',
+  },
+  Italian: {
+    'hello': 'ciao', 'love': 'amore', 'friend': 'amico', 'thanks': 'grazie',
+    'please': 'prego', 'dai': 'come on', 'boh': 'i dont know',
+    'magari': 'maybe/i wish', 'figurati': 'dont mention it',
+    'mamma mia': 'oh my goodness',
+  },
+};
+
+export async function translateText(text: string, from: string, to: string): Promise<string> {
+  if (!text || from === to) return text;
+
+  // Pre-process internet slang
+  let preProcessedText = text;
+  for (const [en, local] of Object.entries(DICT['Internet'])) {
+    const regex = new RegExp(`\\b${local.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+    preProcessedText = preProcessedText.replace(regex, en);
+  }
+
+  try {
+    const langCodes: Record<string, string> = {
+      'Auto-detect': 'auto', 'English': 'en', 'Spanish': 'es', 'French': 'fr',
+      'German': 'de', 'Portuguese': 'pt', 'Italian': 'it', 'Japanese': 'ja',
+      'Korean': 'ko', 'Chinese': 'zh', 'Arabic': 'ar', 'Russian': 'ru',
+      'Hindi': 'hi', 'Indonesian': 'id', 'Vietnamese': 'vi', 'Thai': 'th',
+      'Turkish': 'tr', 'Polish': 'pl', 'Dutch': 'nl', 'Swedish': 'sv',
+      'Ukrainian': 'uk', 'Romanian': 'ro', 'Greek': 'el', 'Hebrew': 'he',
+    };
+
+    const sourceCode = from === 'Auto-detect' ? 'auto' : (langCodes[from] || 'auto');
+    const targetCode = langCodes[to] || 'en';
+
+    // MyMemory API — free, no key required, 5000 words/day per IP
+    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(preProcessedText)}&langpair=${sourceCode}|${targetCode}`;
+    const response = await fetch(url, { signal: AbortSignal.timeout(6000) });
+    if (!response.ok) throw new Error('MyMemory request failed');
+
+    const json = await response.json();
+    if (json?.responseStatus === 200 && json?.responseData?.translatedText) {
+      const result = json.responseData.translatedText;
+      if (result.toUpperCase().includes('PLEASE SELECT')) return preProcessedText;
+      return result;
+    }
+    throw new Error('MyMemory returned no translation');
+  } catch (error) {
+    console.error('Translation API failed, falling back to dictionary:', error);
+
+    const dicts = [DICT[from], DICT[to]].filter(Boolean);
+    let translated = preProcessedText;
+    for (const dict of dicts) {
+      for (const [en, local] of Object.entries(dict!)) {
+        const wordToFind = to === 'English' ? local : en;
+        const replacement = to === 'English' ? en : local;
+        const re = new RegExp(`\\b${wordToFind.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+        translated = translated.replace(re, replacement);
+      }
+    }
+    return translated;
+  }
+}
+
+export function computeVibeScore(text: string, tones: string[]) {
+  let score = 3.0;
+  const lower = text.toLowerCase();
+
+  if (text.includes('!')) score += 0.5;
+  if (text.includes('?')) score -= 0.2;
+  if (lower.includes('lfg') || lower.includes('pog') || lower.includes('fire')) score += 1.0;
+  if (lower.includes('no cap') || lower.includes('on god')) score += 0.5;
+  if (lower.includes('mid') || lower.includes('sus') || lower.includes('ratio')) score -= 0.8;
+  if (tones.includes('hype') || tones.includes('excited')) score += 1.0;
+  if (tones.includes('flirty') || tones.includes('compliment')) score += 0.5;
+  if (tones.includes('negative')) score -= 1.5;
+  if (tones.includes('sarcastic')) score -= 0.5;
+
+  return Math.max(0, Math.min(5, score));
+}
+
+// Words that signal excitement even when paired with swearing
+const HYPE_AMPLIFIERS = [
+  'amazing', 'awesome', 'insane', 'incredible', 'unbelievable', 'love',
+  'great', 'best', 'goat', 'fire', 'lit', 'pog', 'poggers', 'lfg',
+  'sheesh', 'bussin', 'slay', 'ate', 'serving', 'killed it', 'goated',
+];
+
+export function detectTones(text: string): string[] {
+  const lower = text.toLowerCase();
+  const tones: string[] = [];
+
+  // Hype / Excitement
+  if (/\b(lfg|pog|poggers|fire|lit|wow|amazing|insane|sheesh|bussin|goat|slay|ate|incredible|unbelievable)\b/.test(lower) || text.includes('!!')) {
+    tones.push('hype');
+  }
+
+  // Questions
+  if (lower.includes('?') || /\b(how|what|when|where|why|who|huh|wait what)\b/.test(lower)) {
+    tones.push('question');
+  }
+
+  // Gratitude / Support
+  if (/\b(please|thanks|thank you|gg|good game|nice stream|appreciate|love your|great stream)\b/.test(lower)) {
+    tones.push('supportive');
+  }
+
+  // Flirty / Compliments
+  if (/\b(love|beautiful|sexy|hot|baby|sweetie|honey|gorgeous|stunning|cutie|handsome)\b/.test(lower)) {
+    if (/\b(baby|sweetie|honey|gorgeous|stunning|cutie|my love)\b/.test(lower)) {
+      tones.push('flirty');
+    } else {
+      tones.push('compliment');
+    }
+  }
+
+  // Negative — only flag if NOT alongside hype amplifiers
+  const hasSwear = /\b(fuck|shit|hate|stupid|idiot|terrible|worst|awful|garbage|trash)\b/.test(lower);
+  if (hasSwear) {
+    const hasHypeContext = HYPE_AMPLIFIERS.some(word => lower.includes(word));
+    if (!hasHypeContext) {
+      tones.push('negative');
+    } else {
+      if (!tones.includes('hype')) tones.push('hype');
+    }
+  }
+
+  // Aggressive (always flag regardless of context)
+  if (/\b(hate you|kill|die|shut up|get out|go away|loser|worthless)\b/.test(lower)) {
+    if (!tones.includes('negative')) tones.push('negative');
+  }
+
+  // Sarcastic
+  if (/\b(yeah right|sure buddy|okay lol|nice try|totally|definitely not|obviously)\b/.test(lower)) {
+    tones.push('sarcastic');
+  }
+
+  // All caps or triple exclamation = excited
+  if (text.includes('!!!') || (text === text.toUpperCase() && text.replace(/\s/g, '').length > 3)) {
+    if (!tones.includes('hype')) tones.push('excited');
+  }
+
+  if (tones.length === 0) tones.push('neutral');
+  return [...new Set(tones)];
+}
+
+export async function decodeMessage(
+  text: string,
+  targetLanguage: string = "English",
+  geminiApiKey?: string
+): Promise<DecodeResult> {
+  if (geminiApiKey) {
+    const { allowed } = canUseGemini();
+    if (allowed) {
+      try {
+        const analysis = await analyzeWithGemini(text, targetLanguage, geminiApiKey);
+        recordUsage();
+        const safetyWarning = detectSafetyWarnings(text, analysis.translatedText);
+        const detectedLanguage = analysis.sourceLanguage && analysis.sourceLanguage !== 'Unknown'
+          ? analysis.sourceLanguage
+          : detectLanguage(text);
+        const suggestions = analysis.suggestedReplies
+          .filter((reply) => reply && typeof reply.source === 'string' && typeof reply.target === 'string')
+          .slice(0, 3);
+        return {
+          originalText: text,
+          translatedText: analysis.translatedText,
+          sourceLanguage: detectedLanguage,
+          targetLanguage,
+          toneTags: analysis.toneTags,
+          vibeScore: analysis.vibeScore,
+          suggestions,
+          status: 'generated',
+          safetyWarning,
+          slangTerms: analysis.slangTerms,
+          usedGemini: true,
+        };
+      } catch (err) {
+        console.warn('Gemini failed, falling back to free decoder:', err);
+      }
+    }
+  }
+
+  let sourceLanguage = detectLanguage(text);
+
+  if (sourceLanguage === "English") {
+    const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+    const englishWords = ['the', 'and', 'you', 'are', 'for', 'that', 'with', 'this', 'have', 'from', 'they', 'been', 'will', 'would', 'there', 'their', 'what', 'about', 'which', 'when', 'make', 'like', 'just', 'over', 'such', 'take', 'than', 'them', 'some', 'could', 'other', 'more', 'very', 'also', 'after', 'well', 'only', 'into', 'year', 'your', 'good', 'know', 'want', 'dont', "don't", 'think', 'really', 'should'];
+    const englishCount = words.filter(w => englishWords.includes(w)).length;
+    const englishRatio = words.length > 0 ? englishCount / words.length : 1;
+    if (englishRatio < 0.2 && words.length >= 3) {
+      sourceLanguage = "Auto-detect";
+    }
+  }
+
+  const translatedText = await translateText(text, sourceLanguage, targetLanguage);
+  const toneTags = detectTones(text);
+  const vibeScore = computeVibeScore(text, toneTags);
+
+  const baseSuggestions: string[] = [];
+  const lowerText = text.toLowerCase();
+  if (toneTags.includes('question')) {
+    baseSuggestions.push('Good question 😄 What do you think?');
+    if (/where|from|country|city|d[oó]nde|de d[oó]nde|d[oó]nde eres/.test(lowerText)) baseSuggestions.push('I’m here with you now 😊 Where are you watching from?');
+  }
+  if (toneTags.includes('compliment')) baseSuggestions.push('Aww, thank you! You just made me smile 💕');
+  if (toneTags.includes('flirty')) baseSuggestions.push('You’re sweet 😘 What else do you like?');
+  if (toneTags.includes('negative')) baseSuggestions.push('Let’s keep it kind 💛 What would you like to see instead?');
+  if (toneTags.includes('hype') || toneTags.includes('excited')) baseSuggestions.push('Yesss, I love your energy 🔥 What’s your favorite part?');
+  if (toneTags.includes('supportive')) baseSuggestions.push('Thank you for being here, that means a lot 🫶');
+  if (baseSuggestions.length === 0) {
+    baseSuggestions.push('Hey you 😊 How’s your day going?');
+    if (text.trim().endsWith('?')) baseSuggestions.push('I’m glad you asked 😄 Tell me a little more.');
+    else baseSuggestions.push('What are you up to today?');
+  }
+  // Offer a few distinct, usable options while keeping the fallback concise.
+  const replies = [...new Set(baseSuggestions)].slice(0, 3);
+
+  const pairedSuggestions: { source: string; target: string }[] = [];
+  for (const suggestion of replies) {
+    const targetText = targetLanguage !== 'English' ? await translateText(suggestion, 'English', targetLanguage) : suggestion;
+    let sourceText = suggestion;
+    if (sourceLanguage !== 'English' && sourceLanguage !== 'Auto-detect' && sourceLanguage !== 'Unknown') {
+      sourceText = await translateText(suggestion, 'English', sourceLanguage);
+    } else if (sourceLanguage === 'Auto-detect' || sourceLanguage === 'Unknown') {
+      sourceText = targetText;
+    }
+    pairedSuggestions.push({ source: sourceText, target: targetText });
+  }
+
+  return {
+    originalText: text,
+    translatedText,
+    sourceLanguage,
+    targetLanguage,
+    toneTags,
+    vibeScore,
+    suggestions: pairedSuggestions,
+    status: 'generated',
+    safetyWarning: detectSafetyWarnings(text, translatedText),
+    usedGemini: false,
+  };
+}
+
+export default { decodeMessage, detectLanguage, translateText };
