@@ -1,0 +1,14 @@
+{
+  "name": "wassup-license-api",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "keys": "node scripts/generate-keys.mjs",
+    "dev": "npx wrangler dev",
+    "deploy": "npx wrangler deploy",
+    "schema:local": "npx wrangler d1 execute wassup-license --local --file=./schema.sql",
+    "schema:remote": "npx wrangler d1 execute wassup-license --remote --file=./schema.sql"
+  }
+}

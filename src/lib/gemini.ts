@@ -1,21 +1,14 @@
 /**
  * Gemini API Client
- * Uses gemini-1.5-flash for enhanced translation, tone analysis, slang breakdown, and suggestions.
- * Single API call per decode — structured JSON response.
+ * Uses a current free-tier Gemini model for enhanced translation, tone analysis,
+ * slang breakdown, and suggestions. Single API call per decode, structured JSON.
+ *
+ * The model catalogue lives in ./models so the web app and the extension agree.
  */
 
 import { GoogleGenerativeAI } from '@google/generative-ai';
-
-export interface GeminiAnalysis {
-  translatedText: string;
-  sourceLanguage: string;
-  slangTerms: { term: string; meaning: string; context: string }[];
-  toneTags: string[];
-  suggestedReplies: { source: string; target: string }[];
-  vibeScore: number;
-}
-
-const MODEL = 'gemini-1.5-flash';
+import { DEFAULT_GEMINI_MODEL, getFallbackGeminiModel, getFreeGeminiModel } from './models';
+import type { GeminiAnalysis } from './types';
 
 const SYSTEM_PROMPT = `You are a chat message analyzer for a content creator app. The creator receives messages from international viewers in multiple languages.
 
@@ -45,42 +38,67 @@ Rules:
 - Return ONLY the JSON object, no extra text or markdown
 - Do NOT include any explanation outside the JSON`;
 
-export async function paraphraseWithGemini(text: string, apiKey: string): Promise<string> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: MODEL,
-    // Simple system prompt for paraphrasing
-    systemInstruction: 'You are an assistant that rewrites messages in clear, neutral English while preserving the original intent. Return ONLY the rewritten sentence, no extra text.',
-  });
+const PARAPHRASE_PROMPT =
+  'You are an assistant that rewrites messages in clear, neutral English while preserving the original intent. Return ONLY the rewritten sentence, no extra text.';
 
-  const prompt = `Paraphrase this message in neutral English, preserving meaning:\n"${text}"`;
+/** A 404/NOT_FOUND style failure means the model itself is gone; a different model may still work. */
+function isModelUnavailable(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /404|not\s*found|no longer available|unsupported model|is not supported/i.test(message);
+}
+
+async function generate(
+  apiKey: string,
+  modelId: string,
+  systemInstruction: string,
+  prompt: string
+): Promise<string> {
+  const genAI = new GoogleGenerativeAI(apiKey);
+  const model = genAI.getGenerativeModel({ model: modelId, systemInstruction });
   const result = await model.generateContent(prompt);
-  const response = result.response;
-  const raw = response.text().trim();
+  return result.response.text().trim();
+}
+
+/**
+ * Run a request against the requested model, retrying once with the other
+ * supported free model when the first one is unavailable.
+ */
+async function generateWithFallback(
+  apiKey: string,
+  requestedModel: string,
+  systemInstruction: string,
+  prompt: string
+): Promise<string> {
+  const primary = getFreeGeminiModel(requestedModel);
+  try {
+    return await generate(apiKey, primary, systemInstruction, prompt);
+  } catch (error) {
+    const fallback = getFallbackGeminiModel(primary);
+    if (!fallback || !isModelUnavailable(error)) throw error;
+    console.warn(`[wassup] ${primary} unavailable, retrying with ${fallback}`);
+    return generate(apiKey, fallback, systemInstruction, prompt);
+  }
+}
+
+export async function paraphraseWithGemini(
+  text: string,
+  apiKey: string,
+  model: string = DEFAULT_GEMINI_MODEL
+): Promise<string> {
+  const prompt = `Paraphrase this message in neutral English, preserving meaning:\n"${text}"`;
+  const raw = await generateWithFallback(apiKey, model, PARAPHRASE_PROMPT, prompt);
   // Remove any surrounding backticks or markdown fences
-  const cleaned = raw.replace(/^```\s*\n?/i, '').replace(/\n?```$/i, '').trim();
-  return cleaned;
+  return raw.replace(/^```\s*\n?/i, '').replace(/\n?```$/i, '').trim();
 }
 
 export async function analyzeWithGemini(
   text: string,
   targetLanguage: string,
-  apiKey: string
+  apiKey: string,
+  model: string = DEFAULT_GEMINI_MODEL
 ): Promise<GeminiAnalysis> {
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({
-    model: MODEL,
-    systemInstruction: SYSTEM_PROMPT,
-  });
-
-
-
-
   const prompt = `Analyze this chat message. The creator's primary language is ${targetLanguage}.\n\nMessage: "${text}"`;
-
-  const result = await model.generateContent(prompt);
-  const response = result.response;
-  const rawText = response.text().trim();
+  const rawText = await generateWithFallback(apiKey, model, SYSTEM_PROMPT, prompt);
 
   // Strip markdown code fences if present
   const cleaned = rawText.replace(/^```json\n?/i, '').replace(/\n?```$/i, '').trim();
