@@ -66,6 +66,15 @@ All user state is client-side. The web app uses `wassup_history`,
 `wassupGeminiKey`, `wassupGeminiModel`, `wassupDeepAI`, `wassupAiVerified`,
 `wassupReplyLang`, `wassupLastAiError`).
 
+### Personal Dictionary ownership
+
+- `src/hooks/usePersonalDictionary.ts` owns the entries and the `wassup_custom_dict` key. Nothing else reads or writes that key.
+- `src/components/PersonalDictionaryCard.tsx` is the settings UI. It holds only its two draft inputs and calls `onAdd` / `onRemove`.
+- `src/pages/DecoderPage.tsx` calls the hook, passes `entries` into `decodeMessage`, and renders the card with three props.
+- The decode-side logic stays in `src/lib/decoder.ts` (`applyCustomDictionary`), which the extension receives through the sync script.
+
+Storage, presentation, and decode behavior therefore each have one place to change.
+
 ---
 
 ## 3. How to work on it
