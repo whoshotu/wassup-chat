@@ -133,9 +133,11 @@ Consequences to keep in mind:
 - `npx tsc --noEmit` in the root and in `wassup-extension/`.
 - `npm run build` in the root; the extension build with its sync prebuild.
 - `node scripts/sync-extension-lib.mjs` run twice, no diff on the second run.
-- `cd license-api && npm test` - 16 tests covering token signing/verification
-  (tampering, expiry, wrong key, malformed), webhook authentication and idempotency,
-  activation claiming, order-id ownership, and rate limiting.
+- `cd license-api && npm test` - 24 tests covering token signing/verification
+  (tampering, expiry, wrong key, malformed), webhook authentication and every
+  rejection path (unset secret, absent or malformed bodies, non-string tokens,
+  missing order fields), proof that a rejected webhook cannot be activated,
+  idempotency, activation claiming, order-id ownership, and rate limiting.
 - Manual web-app smoke test of a decode with and without a Personal Dictionary entry.
 
 ---

@@ -17,10 +17,15 @@ export function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email));
 }
 
-/** Constant-time string compare so the shared secret cannot be probed by timing. */
+/**
+ * Constant-time string compare so the shared secret cannot be probed by timing.
+ * Anything that is not a string is a mismatch: coercing null/undefined to ''
+ * would make a missing secret or token compare equal to an empty value.
+ */
 export function timingSafeEqual(a, b) {
-  const left = encoder.encode(String(a ?? ''));
-  const right = encoder.encode(String(b ?? ''));
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const left = encoder.encode(a);
+  const right = encoder.encode(b);
   let diff = left.length ^ right.length;
   const length = Math.max(left.length, right.length);
   for (let i = 0; i < length; i += 1) {

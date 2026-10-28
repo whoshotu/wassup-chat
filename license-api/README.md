@@ -67,6 +67,20 @@ the `KO_FI_VERIFICATION_TOKEN` secret.
 `/activate` is rate limited to 10 attempts per IP per 10 minutes. The signing key
 is ES256 (P-256); the private half exists only as a Worker secret.
 
+## Webhook rejections
+
+Every failure is explicit and none of them records a purchase:
+
+| Condition | Status | Body |
+| --- | --- | --- |
+| `KO_FI_VERIFICATION_TOKEN` is unset or empty | 500 | `webhook_not_configured` |
+| Body absent, malformed, or not a JSON object | 400 | `bad_payload` |
+| Verification token missing, non-string, or wrong | 401 | `bad_token` |
+| Paid order missing a message/transaction id or a valid email | 422 | `missing_fields` |
+
+A correct token from a non-paid type (tip, membership, unknown) is acknowledged
+with `{ ok: true, ignored: true }` and no purchase is stored.
+
 ## Tests
 
 ```bash
@@ -74,8 +88,10 @@ npm test
 ```
 
 Covers token signing/verification (tampering, expiry, wrong key, malformed input),
-webhook authentication and idempotency, activation claiming, order-id ownership,
-and rate limiting, using an in-memory D1 stand-in from `test-support/`.
+webhook authentication and every rejection path (unset secret, absent or malformed
+bodies, non-string tokens, missing order fields, and proof that a rejected webhook
+cannot be activated), idempotency, activation claiming, order-id ownership, and rate
+limiting, using an in-memory D1 stand-in from `test-support/`.
 
 ## Redeploying after a schema change
 
