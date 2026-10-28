@@ -35,6 +35,14 @@ function webhookRequest(payload, secret = WEBHOOK_SECRET) {
   });
 }
 
+function rawWebhookRequest(body, contentType = 'application/x-www-form-urlencoded') {
+  return new Request('https://license.test/kofi-webhook', {
+    method: 'POST',
+    headers: { 'content-type': contentType },
+    body,
+  });
+}
+
 function activateRequest(body, ip = '203.0.113.7') {
   return new Request('https://license.test/activate', {
     method: 'POST',
@@ -120,7 +128,11 @@ test('constant-time compare and email validation behave', () => {
   assert.equal(timingSafeEqual('secret', 'secret'), true);
   assert.equal(timingSafeEqual('secret', 'secreT'), false);
   assert.equal(timingSafeEqual('short', 'longer-value'), false);
-  assert.equal(timingSafeEqual(undefined, ''), true);
+  // Non-strings must never compare equal: this was the webhook fail-open.
+  assert.equal(timingSafeEqual(undefined, ''), false);
+  assert.equal(timingSafeEqual(undefined, undefined), false);
+  assert.equal(timingSafeEqual(null, ''), false);
+  assert.equal(timingSafeEqual('', ''), true);
 
   assert.equal(isValidEmail('buyer@example.com'), true);
   assert.equal(isValidEmail('  Buyer@Example.COM '), true);
@@ -159,6 +171,122 @@ test('webhook ignores tips and stores shop orders idempotently', async () => {
   await handleKoFiWebhook(webhookRequest(SHOP_ORDER), env);
   await handleKoFiWebhook(webhookRequest(SHOP_ORDER), env);
   assert.equal(env.DB.purchases.size, 1, 'duplicate deliveries must not create rows');
+});
+
+test('webhook fails closed when the shared secret is not configured', async () => {
+  const env = makeEnv({ KO_FI_VERIFICATION_TOKEN: undefined });
+
+  for (const token of ['', 'anything']) {
+    const response = await handleKoFiWebhook(webhookRequest(SHOP_ORDER, token), env);
+    const body = await response.json();
+    assert.equal(response.status, 500);
+    assert.equal(body.ok, false);
+    assert.equal(body.error, 'webhook_not_configured');
+  }
+
+  assert.equal(env.DB.purchases.size, 0, 'a misconfigured webhook must not record purchases');
+});
+
+test('webhook rejects absent, malformed and non-object bodies', async () => {
+  const env = makeEnv();
+  const bodies = [
+    ['', 'application/x-www-form-urlencoded'],
+    ['data=%7Bnot-json', 'application/x-www-form-urlencoded'],
+    ['data=null', 'application/x-www-form-urlencoded'],
+    ['[]', 'application/json'],
+    ['null', 'application/json'],
+    ['"a string"', 'application/json'],
+    ['42', 'application/json'],
+  ];
+
+  for (const [body, contentType] of bodies) {
+    const response = await handleKoFiWebhook(rawWebhookRequest(body, contentType), env);
+    assert.equal(response.status, 400, `body ${JSON.stringify(body)} should be rejected`);
+  }
+
+  assert.equal(env.DB.purchases.size, 0);
+});
+
+test('webhook rejects missing, empty and non-string verification tokens', async () => {
+  const env = makeEnv();
+  const tokens = [undefined, null, '', 123, {}, [], true];
+
+  for (const verification_token of tokens) {
+    const payload = { ...SHOP_ORDER, verification_token };
+    const body = new URLSearchParams({ data: JSON.stringify(payload) }).toString();
+    const response = await handleKoFiWebhook(rawWebhookRequest(body), env);
+    assert.equal(response.status, 401, `token ${JSON.stringify(verification_token)} should be rejected`);
+  }
+
+  assert.equal(env.DB.purchases.size, 0);
+});
+
+test('webhook rejects paid orders with missing or mistyped fields', async () => {
+  const env = makeEnv();
+  const payloads = [
+    { ...SHOP_ORDER, email: undefined },
+    { ...SHOP_ORDER, email: 'not-an-email' },
+    { ...SHOP_ORDER, email: 12345 },
+    { ...SHOP_ORDER, message_id: undefined, kofi_transaction_id: undefined },
+    { ...SHOP_ORDER, message_id: '', kofi_transaction_id: '' },
+    { ...SHOP_ORDER, message_id: {}, kofi_transaction_id: 99 },
+  ];
+
+  for (const payload of payloads) {
+    const authenticated = { ...payload, verification_token: WEBHOOK_SECRET };
+    const body = new URLSearchParams({ data: JSON.stringify(authenticated) }).toString();
+    const response = await handleKoFiWebhook(rawWebhookRequest(body), env);
+    assert.equal(response.status, 422, `payload ${JSON.stringify(payload)} should be rejected`);
+  }
+
+  assert.equal(env.DB.purchases.size, 0);
+});
+
+test('a rejected webhook leaves nothing that can be activated', async () => {
+  const env = makeEnv();
+
+  const rejected = await handleKoFiWebhook(webhookRequest(SHOP_ORDER, 'wrong-token'), env);
+  assert.equal(rejected.status, 401);
+
+  const activation = await handleActivate(activateRequest({ email: VALID_EMAIL }), env);
+  const body = await activation.json();
+  assert.equal(activation.status, 404);
+  assert.equal(body.ok, false);
+  assert.equal(body.token, undefined);
+});
+
+test('an unconfigured webhook leaves nothing that can be activated', async () => {
+  const env = makeEnv({ KO_FI_VERIFICATION_TOKEN: undefined });
+
+  const rejected = await handleKoFiWebhook(webhookRequest(SHOP_ORDER, ''), env);
+  assert.equal(rejected.status, 500);
+
+  const activation = await handleActivate(activateRequest({ email: VALID_EMAIL }), env);
+  assert.equal(activation.status, 404);
+  assert.equal((await activation.json()).token, undefined);
+});
+
+test('still accepts an authenticated JSON webhook', async () => {
+  const env = makeEnv();
+  const body = JSON.stringify({ ...SHOP_ORDER, verification_token: WEBHOOK_SECRET });
+
+  const response = await handleKoFiWebhook(rawWebhookRequest(body, 'application/json'), env);
+  assert.equal(response.status, 200);
+  assert.equal(env.DB.purchases.size, 1);
+});
+
+test('authenticated non-paid types are acknowledged without a purchase', async () => {
+  const env = makeEnv();
+
+  for (const type of ['Donation', 'Subscription', undefined, 'Unknown']) {
+    const payload = { ...SHOP_ORDER, type, verification_token: WEBHOOK_SECRET };
+    const body = new URLSearchParams({ data: JSON.stringify(payload) }).toString();
+    const response = await handleKoFiWebhook(rawWebhookRequest(body), env);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).ignored, true);
+  }
+
+  assert.equal(env.DB.purchases.size, 0);
 });
 
 test('activate rejects an email with no purchase', async () => {

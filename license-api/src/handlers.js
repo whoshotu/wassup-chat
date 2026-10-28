@@ -71,21 +71,42 @@ export async function readKoFiPayload(request) {
 
 const PAID_TYPES = new Set(['Shop Order', 'Commission']);
 
-export async function handleKoFiWebhook(request, env) {
-  const payload = await readKoFiPayload(request);
-  if (!payload) return json({ ok: false, error: 'bad_payload' }, 400);
+/** First value that is a non-empty string. Numbers, objects and blanks are ignored. */
+function firstNonEmptyString(...values) {
+  for (const value of values) {
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return '';
+}
 
-  if (!timingSafeEqual(payload.verification_token, env.KO_FI_VERIFICATION_TOKEN)) {
+export async function handleKoFiWebhook(request, env) {
+  // Fail closed: without a configured secret nothing can be authenticated, so
+  // reject outright instead of comparing against a missing value.
+  const configuredSecret = env?.KO_FI_VERIFICATION_TOKEN;
+  if (typeof configuredSecret !== 'string' || configuredSecret.length === 0) {
+    return json({ ok: false, error: 'webhook_not_configured' }, 500);
+  }
+
+  const payload = await readKoFiPayload(request);
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+    return json({ ok: false, error: 'bad_payload' }, 400);
+  }
+
+  // timingSafeEqual rejects non-strings and length mismatches, so an empty or
+  // absent token cannot match a configured secret.
+  if (!timingSafeEqual(payload.verification_token, configuredSecret)) {
     return json({ ok: false, error: 'bad_token' }, 401);
   }
 
-  // Only paid product sales unlock the extension; tips and memberships do not.
-  if (!PAID_TYPES.has(String(payload.type))) {
+  // Authenticated from here on. Only paid product sales unlock the extension;
+  // tips, memberships and unknown types are acknowledged without recording a purchase.
+  const type = typeof payload.type === 'string' ? payload.type : '';
+  if (!PAID_TYPES.has(type)) {
     return json({ ok: true, ignored: true });
   }
 
-  const messageId = String(payload.message_id || payload.kofi_transaction_id || '');
-  const email = normalizeEmail(payload.email);
+  const messageId = firstNonEmptyString(payload.message_id, payload.kofi_transaction_id);
+  const email = normalizeEmail(typeof payload.email === 'string' ? payload.email : '');
   if (!messageId || !isValidEmail(email)) {
     return json({ ok: false, error: 'missing_fields' }, 422);
   }
