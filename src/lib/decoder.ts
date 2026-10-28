@@ -7,21 +7,52 @@
 import { analyzeWithGemini, paraphraseWithGemini } from './gemini';
 import { canUseGemini, canDisambiguate, recordUsage } from './geminiRateLimit';
 import { detectAmbiguity, applyLocalDisambiguation } from './idiomHelper';
+import type { CustomDictionary, DecodeResult } from './types';
 
-export interface DecodeResult {
-  originalText: string;
-  translatedText: string;
-  sourceLanguage: string;
-  targetLanguage: string;
-  toneTags: string[];
-  vibeScore: number;
-  suggestions: { source: string; target: string }[];
-  status: string;
-  safetyWarning?: string;
-  slangTerms?: { term: string; meaning: string; context: string }[];
-  usedGemini?: boolean;
-  disambiguated?: boolean;
-  disambiguationNote?: string;
+export type { DecodeResult } from './types';
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Apply the user's Personal Dictionary to the text before decoding.
+ * Longer entries win so multi-word slang is not clobbered by a shorter key.
+ */
+export function applyCustomDictionary(
+  text: string,
+  dictionary?: CustomDictionary
+): { text: string; applied: string[] } {
+  if (!dictionary) return { text, applied: [] };
+
+  const entries = Object.entries(dictionary)
+    .map(([term, meaning]) => ({ term: term.trim(), meaning: meaning.trim() }))
+    .filter((entry) => entry.term.length > 0 && entry.meaning.length > 0)
+    .sort((a, b) => b.term.length - a.term.length);
+
+  let result = text;
+  const applied: string[] = [];
+  for (const { term, meaning } of entries) {
+    const pattern = new RegExp(
+      `(?<![\\p{L}\\p{N}])${escapeRegExp(term)}(?![\\p{L}\\p{N}])`,
+      'giu'
+    );
+    if (!pattern.test(result)) continue;
+    result = result.replace(pattern, meaning);
+    applied.push(term);
+  }
+  return { text: result, applied };
+}
+
+/** Short, user-facing reason the AI path was skipped, for the decode result. */
+function describeAiError(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (/404|not\s*found|no longer available|unsupported model/i.test(message)) {
+    return 'The selected Gemini model is not available for this API key.';
+  }
+  if (/429|quota|rate limit/i.test(message)) return 'Gemini quota or rate limit reached.';
+  if (/api[_ ]?key|permission|401|403/i.test(message)) return 'Gemini rejected the API key.';
+  return 'Gemini request failed.';
 }
 
 
@@ -326,22 +357,36 @@ export function detectTones(text: string): string[] {
 export async function decodeMessage(
   text: string,
   targetLanguage: string = "English",
-  geminiApiKey?: string
+  geminiApiKey?: string,
+  customDictionary?: CustomDictionary
 ): Promise<DecodeResult> {
   const original = text;
+
+  // Personal Dictionary runs before both the AI and free paths so the user's own
+  // slang meanings are what actually get translated and analysed.
+  const dictionary = applyCustomDictionary(text, customDictionary);
+  text = dictionary.text;
+  const dictionaryNote = dictionary.applied.length > 0
+    ? `Personal dictionary applied: ${dictionary.applied.map((term) => `"${term}"`).join(', ')}`
+    : '';
+
+  let aiError: string | undefined;
+
   // Try Gemini AI path if key is provided
   if (geminiApiKey) {
-    const { allowed } = canUseGemini();
-    if (allowed) {
+    const { allowed, reason } = canUseGemini();
+    if (!allowed) {
+      aiError = reason || 'Gemini rate limit reached.';
+    } else {
       try {
         const analysis = await analyzeWithGemini(text, targetLanguage, geminiApiKey);
         recordUsage();
-        const safetyWarning = detectSafetyWarnings(text, analysis.translatedText);
+        const safetyWarning = detectSafetyWarnings(original, analysis.translatedText);
         const detectedLanguage = analysis.sourceLanguage && analysis.sourceLanguage !== 'Unknown'
           ? analysis.sourceLanguage
           : detectLanguage(text);
         return {
-          originalText: text,
+          originalText: original,
           translatedText: analysis.translatedText,
           sourceLanguage: detectedLanguage,
           targetLanguage,
@@ -354,9 +399,11 @@ export async function decodeMessage(
           usedGemini: true,
           disambiguated: false,
           disambiguationNote: '',
+          dictionaryNote,
         };
       } catch (err) {
         console.warn('Gemini failed, falling back to free decoder:', err);
+        aiError = describeAiError(err);
       }
     }
   }
@@ -443,8 +490,10 @@ export async function decodeMessage(
     status: 'generated',
     safetyWarning: detectSafetyWarnings(original, translatedText),
     usedGemini: false,
+    aiError,
     disambiguated,
     disambiguationNote,
+    dictionaryNote,
   };
 }
 

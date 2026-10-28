@@ -23,30 +23,21 @@ import {
   HelpCircle,
   LogOut,
   Copy,
-  ArrowRight
+  ArrowRight,
+  BookOpen,
+  Trash2
 } from 'lucide-react'
 import decoder from '@/lib/decoder'
 import { useTheme } from '@/contexts/ThemeContext'
 import { cn } from '@/lib/utils'
 import { getUsage, resetUsage } from '@/lib/geminiRateLimit'
-import type { GeminiUsageStats } from '@/types'
+import type { CustomDictionary, DecodeResult as BaseDecodeResult, GeminiUsageStats } from '@/types'
 
-type DecodeResult = {
+// UI-level decode record: the shared decode result plus what history needs.
+type DecodeResult = BaseDecodeResult & {
   id: string;
-  originalText: string;
-  translatedText: string;
-  sourceLanguage: string;
-  targetLanguage: string;
-  toneTags: string[];
-  vibeScore: number;
-  suggestions: { source: string; target: string }[];
   timestamp: number;
   error?: string;
-  safetyWarning?: string;
-  slangTerms?: { term: string; meaning: string; context: string }[];
-  usedGemini?: boolean;
-  disambiguated?: boolean;
-  disambiguationNote?: string;
 }
 
 export function DecoderPage() {
@@ -61,12 +52,20 @@ export function DecoderPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [geminiApiKey, setGeminiApiKey] = useState('')
   const [geminiUsage, setGeminiUsage] = useState<GeminiUsageStats | null>(null)
+  const [customDict, setCustomDict] = useState<CustomDictionary>({})
+  const [newSlang, setNewSlang] = useState('')
+  const [newMeaning, setNewMeaning] = useState('')
 
   // Load settings and history from localStorage
   useEffect(() => {
     const savedHistory = localStorage.getItem('wassup_history')
     if (savedHistory) {
       try { setHistory(JSON.parse(savedHistory)) } catch (e) { console.error(e) }
+    }
+
+    const savedDict = localStorage.getItem('wassup_custom_dict')
+    if (savedDict) {
+      try { setCustomDict(JSON.parse(savedDict)) } catch (e) { console.error(e) }
     }
     
     // Determine user's preferred language
@@ -114,6 +113,26 @@ export function DecoderPage() {
     localStorage.setItem('wassup_preferred_lang', lang)
   }
 
+  const saveCustomDict = (dict: CustomDictionary) => {
+    setCustomDict(dict)
+    localStorage.setItem('wassup_custom_dict', JSON.stringify(dict))
+  }
+
+  const addDictionaryEntry = () => {
+    const slang = newSlang.trim()
+    const meaning = newMeaning.trim()
+    if (!slang || !meaning) return
+    saveCustomDict({ ...customDict, [slang]: meaning })
+    setNewSlang('')
+    setNewMeaning('')
+  }
+
+  const removeDictionaryEntry = (slang: string) => {
+    const updated = { ...customDict }
+    delete updated[slang]
+    saveCustomDict(updated)
+  }
+
   const languages = [
     'English', 'Spanish', 'French', 'German', 'Portuguese', 'Italian', 'Japanese', 'Korean', 'Hindi', 'Indonesian', 'Vietnamese', 'Thai'
   ]
@@ -123,7 +142,7 @@ export function DecoderPage() {
     setLoading(true)
     try {
       // Use local client-side decoder (with optional Gemini enhancement)
-      const res = await decoder.decodeMessage(inputText, targetLanguage, geminiApiKey || undefined)
+      const res = await decoder.decodeMessage(inputText, targetLanguage, geminiApiKey || undefined, customDict)
       const newDecode: DecodeResult = {
         ...res,
         id: Math.random().toString(36).substr(2, 9),
@@ -142,6 +161,7 @@ export function DecoderPage() {
         toneTags: ['error'],
         vibeScore: 0,
         suggestions: [],
+        status: 'error',
         timestamp: Date.now(),
         error: String(e) 
       })
@@ -267,6 +287,21 @@ export function DecoderPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
+                  {result.aiError && (
+                    <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-xl p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+                        <span className="text-sm font-bold text-amber-400 uppercase tracking-wider">AI unavailable</span>
+                      </div>
+                      <p className="text-sm text-amber-300">{result.aiError} This message was decoded with the free decoder.</p>
+                    </div>
+                  )}
+                  {result.dictionaryNote && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-primary shrink-0" />
+                      <p className="text-xs text-slate-400">{result.dictionaryNote}</p>
+                    </div>
+                  )}
                   {result.disambiguated && result.disambiguationNote && (
                     <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-xl p-4 mb-4 space-y-2">
                       <div className="flex items-center gap-2">
@@ -510,6 +545,65 @@ export function DecoderPage() {
         </CardContent>
       </Card>
 
+      {/* Personal Dictionary */}
+      <Card className="border-white/5 bg-[#121216]">
+        <CardHeader className="pb-3 border-b border-white/5">
+          <CardTitle className="text-sm font-bold uppercase tracking-widest text-slate-500 flex items-center gap-2">
+            <BookOpen className="w-3 h-3" /> Personal Dictionary
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6 space-y-4">
+          <p className="text-xs text-slate-500">
+            Teach the decoder slang only your community uses. Entries are replaced with their meaning before translation and AI analysis.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              placeholder="Slang word"
+              value={newSlang}
+              onChange={(e) => setNewSlang(e.target.value)}
+              className="flex-1 bg-[#0a0a0c] border border-white/10 rounded-xl py-2.5 px-4 text-slate-300 text-sm focus:outline-none focus:border-primary/50"
+            />
+            <input
+              placeholder="Meaning"
+              value={newMeaning}
+              onChange={(e) => setNewMeaning(e.target.value)}
+              className="flex-1 bg-[#0a0a0c] border border-white/10 rounded-xl py-2.5 px-4 text-slate-300 text-sm focus:outline-none focus:border-primary/50"
+            />
+            <Button
+              onClick={addDictionaryEntry}
+              disabled={!newSlang.trim() || !newMeaning.trim()}
+              className="bg-primary hover:bg-primary/90 text-white rounded-xl text-sm"
+            >
+              Add
+            </Button>
+          </div>
+          {Object.keys(customDict).length === 0 ? (
+            <p className="text-xs text-slate-600">No custom entries yet.</p>
+          ) : (
+            <div className="divide-y divide-white/5 rounded-xl border border-white/5 bg-[#0a0a0c]">
+              {Object.entries(customDict).map(([slang, meaning]) => (
+                <div key={slang} className="flex items-center justify-between gap-3 px-3 py-2">
+                  <p className="text-sm truncate">
+                    <span className="font-bold text-primary">{slang}</span>
+                    <ArrowRight className="inline w-3 h-3 mx-1.5 text-slate-600" />
+                    <span className="text-slate-400">{meaning}</span>
+                  </p>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="w-6 h-6 shrink-0 hover:bg-white/10"
+                    onClick={() => removeDictionaryEntry(slang)}
+                    title="Remove entry"
+                  >
+                    <Trash2 className="w-3 h-3 text-slate-500" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Gemini API Key */}
       <Card className="border-white/5 bg-[#121216]">
         <CardHeader className="pb-3 border-b border-white/5">
@@ -528,7 +622,7 @@ export function DecoderPage() {
               className="w-full bg-[#0a0a0c] border border-white/10 rounded-xl py-2.5 px-4 text-slate-300 text-sm focus:outline-none focus:border-primary/50"
             />
             <p className="text-xs text-slate-500">
-              Free key at <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">aistudio.google.com</a> — enhances tone analysis, slang breakdown, and suggestions.
+              Free key at <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">aistudio.google.com</a>. Enhances tone analysis, slang breakdown, and suggestions.
             </p>
           </div>
 

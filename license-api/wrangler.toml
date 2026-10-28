@@ -1,0 +1,13 @@
+name = "wassup-license"
+main = "src/index.js"
+compatibility_date = "2026-10-28"
+
+# Created by: npx wrangler d1 create wassup-license
+# Paste the printed database_id below, then run `npm run schema:remote`.
+[[d1_databases]]
+binding = "DB"
+database_name = "wassup-license"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+
+[observability]
+enabled = true
