@@ -5,6 +5,7 @@ import { Toaster } from "./components/ui/toaster";
 import LandingPage from "./pages/LandingPage";
 import AuthPage from "./pages/AuthPage";
 import DecoderPage from "./pages/DecoderPage";
+import ClaimPage from "./pages/ClaimPage";
 
 // Loading spinner component
 function LoadingSpinner() {
@@ -26,6 +27,7 @@ function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/auth" element={<AuthPage />} />
           <Route path="/decoder" element={<DecoderPage />} />
+          <Route path="/claim" element={<ClaimPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <Toaster />

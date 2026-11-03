@@ -23,30 +23,23 @@ import {
   HelpCircle,
   LogOut,
   Copy,
-  ArrowRight
+  ArrowRight,
+  BookOpen
 } from 'lucide-react'
 import decoder from '@/lib/decoder'
 import { useTheme } from '@/contexts/ThemeContext'
 import { cn } from '@/lib/utils'
 import { getUsage, resetUsage } from '@/lib/geminiRateLimit'
-import type { GeminiUsageStats } from '@/types'
+import type { DecodeResult as BaseDecodeResult, GeminiUsageStats } from '@/types'
+import { usePersonalDictionary } from '@/hooks/usePersonalDictionary'
+import { PersonalDictionaryCard } from '@/components/PersonalDictionaryCard'
+import { TranslationEngineBadge } from '@/components/TranslationEngineBadge'
 
-type DecodeResult = {
+// UI-level decode record: the shared decode result plus what history needs.
+type DecodeResult = BaseDecodeResult & {
   id: string;
-  originalText: string;
-  translatedText: string;
-  sourceLanguage: string;
-  targetLanguage: string;
-  toneTags: string[];
-  vibeScore: number;
-  suggestions: { source: string; target: string }[];
   timestamp: number;
   error?: string;
-  safetyWarning?: string;
-  slangTerms?: { term: string; meaning: string; context: string }[];
-  usedGemini?: boolean;
-  disambiguated?: boolean;
-  disambiguationNote?: string;
 }
 
 export function DecoderPage() {
@@ -61,6 +54,7 @@ export function DecoderPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [geminiApiKey, setGeminiApiKey] = useState('')
   const [geminiUsage, setGeminiUsage] = useState<GeminiUsageStats | null>(null)
+  const dictionary = usePersonalDictionary()
 
   // Load settings and history from localStorage
   useEffect(() => {
@@ -68,7 +62,7 @@ export function DecoderPage() {
     if (savedHistory) {
       try { setHistory(JSON.parse(savedHistory)) } catch (e) { console.error(e) }
     }
-    
+
     // Determine user's preferred language
     const savedLang = localStorage.getItem('wassup_preferred_lang')
     if (savedLang) {
@@ -123,7 +117,7 @@ export function DecoderPage() {
     setLoading(true)
     try {
       // Use local client-side decoder (with optional Gemini enhancement)
-      const res = await decoder.decodeMessage(inputText, targetLanguage, geminiApiKey || undefined)
+      const res = await decoder.decodeMessage(inputText, targetLanguage, geminiApiKey || undefined, dictionary.entries)
       const newDecode: DecodeResult = {
         ...res,
         id: Math.random().toString(36).substr(2, 9),
@@ -142,6 +136,7 @@ export function DecoderPage() {
         toneTags: ['error'],
         vibeScore: 0,
         suggestions: [],
+        status: 'error',
         timestamp: Date.now(),
         error: String(e) 
       })
@@ -247,12 +242,6 @@ export function DecoderPage() {
                       {result.sourceLanguage}
                     </Badge>
                     <CardTitle className="text-sm font-medium text-slate-400">Translation & Analysis</CardTitle>
-                    {result.usedGemini && (
-                      <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-[10px] font-bold px-1.5 h-4">
-                        <Sparkles className="w-2.5 h-2.5 mr-1" />
-                        Gemini
-                      </Badge>
-                    )}
                   </div>
                   <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map((s) => (
@@ -267,6 +256,21 @@ export function DecoderPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6 space-y-6">
+                  {result.aiError && (
+                    <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-xl p-4 space-y-2">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-5 h-5 text-amber-500 shrink-0" />
+                        <span className="text-sm font-bold text-amber-400 uppercase tracking-wider">AI unavailable</span>
+                      </div>
+                      <p className="text-sm text-amber-300">{result.aiError} This message was decoded with the free decoder.</p>
+                    </div>
+                  )}
+                  {result.dictionaryNote && (
+                    <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center gap-2">
+                      <BookOpen className="w-4 h-4 text-primary shrink-0" />
+                      <p className="text-xs text-slate-400">{result.dictionaryNote}</p>
+                    </div>
+                  )}
                   {result.disambiguated && result.disambiguationNote && (
                     <div className="bg-amber-500/10 border-2 border-amber-500/30 rounded-xl p-4 mb-4 space-y-2">
                       <div className="flex items-center gap-2">
@@ -290,6 +294,9 @@ export function DecoderPage() {
                     <p className="text-2xl font-semibold text-white leading-tight">
                       {result.translatedText}
                     </p>
+                    <div className="pt-1.5">
+                      <TranslationEngineBadge result={result} />
+                    </div>
                     <div className="pt-2">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600 block mb-1">Original Message</span>
                       <p className="text-sm text-slate-500 italic">
@@ -510,6 +517,12 @@ export function DecoderPage() {
         </CardContent>
       </Card>
 
+      <PersonalDictionaryCard
+        entries={dictionary.entries}
+        onAdd={dictionary.addEntry}
+        onRemove={dictionary.removeEntry}
+      />
+
       {/* Gemini API Key */}
       <Card className="border-white/5 bg-[#121216]">
         <CardHeader className="pb-3 border-b border-white/5">
@@ -528,7 +541,7 @@ export function DecoderPage() {
               className="w-full bg-[#0a0a0c] border border-white/10 rounded-xl py-2.5 px-4 text-slate-300 text-sm focus:outline-none focus:border-primary/50"
             />
             <p className="text-xs text-slate-500">
-              Free key at <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">aistudio.google.com</a> — enhances tone analysis, slang breakdown, and suggestions.
+              Free key at <a href="https://aistudio.google.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">aistudio.google.com</a>. Enhances tone analysis, slang breakdown, and suggestions.
             </p>
           </div>
 
@@ -731,8 +744,8 @@ export function DecoderPage() {
   return (
     <div className="min-h-screen bg-[#0a0a0c] text-slate-200 flex flex-col">
       {/* Top Header */}
-      <header className="px-6 py-4 flex items-center justify-between border-b border-white/5 bg-[#0a0a0c]/80 backdrop-blur-md sticky top-0 z-50">
-        <button onClick={() => navigate('/')} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+      <header className="px-6 py-4 flex items-center justify-between border-b border-white/5 bg-[#0a0a0c]/80 backdrop-blur-md sticky top-0 z-40">
+        <button onClick={() => navigate('/')} className="flex items-center gap-3 hover:opacity-80 transition-opacity" aria-label="Go to homepage">
           <div className="bg-primary p-1.5 rounded-lg shadow-lg shadow-primary/20">
             <Sparkles className="w-5 h-5 text-white" />
           </div>
@@ -743,13 +756,14 @@ export function DecoderPage() {
           <button 
             onClick={toggleTheme}
             className="p-2 hover:bg-white/5 rounded-full transition-colors"
+            aria-label="Toggle Theme"
           >
             {theme === 'dark' ? <Sun className="w-5 h-5 text-slate-400" /> : <Moon className="w-5 h-5 text-slate-400" />}
           </button>
         </div>
       </header>
 
-      <main className="flex-1 p-4 md:p-8 max-w-6xl mx-auto w-full pb-24 lg:pt-12">
+      <main className="flex-1 px-4 pt-4 md:px-8 md:pt-8 max-w-6xl mx-auto w-full !pb-28 lg:pt-12">
         {/* Dynamic Tab Rendering */}
         <div className="animate-in fade-in duration-300">
           {activeTab === 'decode' && renderDecode()}
@@ -770,6 +784,7 @@ export function DecoderPage() {
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
+            aria-label={tab.label}
             className={cn(
               "flex flex-col items-center gap-1 min-w-[60px] transition-all relative py-1",
               activeTab === tab.id ? "text-primary" : "text-slate-600 hover:text-slate-400"
@@ -777,7 +792,7 @@ export function DecoderPage() {
           >
             {activeTab === tab.id && <div className="absolute inset-0 bg-primary/10 blur-xl rounded-full -z-10" />}
             <tab.icon className={cn("w-5 h-5", activeTab === tab.id && "fill-primary/20")} />
-            <span className="text-[10px] font-bold uppercase tracking-tighter">{tab.label}</span>
+            <span className="text-xs font-bold uppercase tracking-tighter">{tab.label}</span>
           </button>
         ))}
       </nav>

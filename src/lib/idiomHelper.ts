@@ -2,16 +2,15 @@
 // Provides a lightweight client‑side mechanism to detect ambiguous idioms
 // and replace them with neutral English meanings before translation.
 
+import idiomsData from '../data/idioms.json';
+
 interface IdiomMap {
   [lang: string]: { [idiom: string]: string };
 }
 
 /** Load the static idiom JSON bundled with the app */
 export function loadIdioms(): IdiomMap {
-  // The JSON is imported at build time (Vite/Webpack can handle JSON imports).
-  // Using a dynamic import to keep it lazy and allow bundling.
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
-  return require('../data/idioms.json') as IdiomMap;
+  return idiomsData as IdiomMap;
 }
 
 /** Detect whether a text likely contains ambiguous idioms.

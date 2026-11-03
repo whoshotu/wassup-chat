@@ -32,8 +32,12 @@ core
 
 .github/
 
-# Ignore the extension codebase to keep the main web app clean
+# Ignore the live extension workspace so the paid extension is not published.
+# Only the frozen pre-fix snapshot in extension-baseline/ is tracked.
 wassup-extension/
+wassup-extension/dist.pem
+*.crx
+*.zip
 
 # Stale test results
 TEST_RESULTS.md
