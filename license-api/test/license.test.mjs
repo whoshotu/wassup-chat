@@ -2,7 +2,7 @@ import { test, before } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createD1Stub } from '../test-support/d1-stub.mjs';
-import { handleActivate, handleKoFiWebhook, handleVerify } from '../src/handlers.js';
+import { handleActivate, handleClaim, handleKoFiWebhook, handleVerify } from '../src/handlers.js';
 import { isValidEmail, sha256Hex, timingSafeEqual } from '../src/store.js';
 import { signLicenseToken, TOKEN_TTL_MS, verifyLicenseToken } from '../src/token.js';
 
@@ -40,6 +40,14 @@ function rawWebhookRequest(body, contentType = 'application/x-www-form-urlencode
     method: 'POST',
     headers: { 'content-type': contentType },
     body,
+  });
+}
+
+function claimRequest(body, ip = '203.0.113.7') {
+  return new Request('https://license.test/claim', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'cf-connecting-ip': ip },
+    body: JSON.stringify(body),
   });
 }
 
@@ -242,28 +250,30 @@ test('webhook rejects paid orders with missing or mistyped fields', async () => 
   assert.equal(env.DB.purchases.size, 0);
 });
 
-test('a rejected webhook leaves nothing that can be activated', async () => {
+test('a rejected webhook leaves nothing that can be claimed or activated', async () => {
   const env = makeEnv();
 
   const rejected = await handleKoFiWebhook(webhookRequest(SHOP_ORDER, 'wrong-token'), env);
   assert.equal(rejected.status, 401);
 
-  const activation = await handleActivate(activateRequest({ email: VALID_EMAIL }), env);
-  const body = await activation.json();
+  const claim = await handleClaim(claimRequest({ email: VALID_EMAIL, orderId: 'txn-abc' }), env);
+  assert.equal(claim.status, 404);
+  assert.equal((await claim.json()).key, undefined);
+
+  const activation = await handleActivate(activateRequest({ key: 'WASSUP-AAAA-BBBB-CCCC-DDDD' }), env);
   assert.equal(activation.status, 404);
-  assert.equal(body.ok, false);
-  assert.equal(body.token, undefined);
+  assert.equal((await activation.json()).token, undefined);
 });
 
-test('an unconfigured webhook leaves nothing that can be activated', async () => {
+test('an unconfigured webhook leaves nothing that can be claimed', async () => {
   const env = makeEnv({ KO_FI_VERIFICATION_TOKEN: undefined });
 
   const rejected = await handleKoFiWebhook(webhookRequest(SHOP_ORDER, ''), env);
   assert.equal(rejected.status, 500);
 
-  const activation = await handleActivate(activateRequest({ email: VALID_EMAIL }), env);
-  assert.equal(activation.status, 404);
-  assert.equal((await activation.json()).token, undefined);
+  const claim = await handleClaim(claimRequest({ email: VALID_EMAIL }), env);
+  assert.equal(claim.status, 404);
+  assert.equal((await claim.json()).key, undefined);
 });
 
 test('still accepts an authenticated JSON webhook', async () => {
@@ -289,63 +299,127 @@ test('authenticated non-paid types are acknowledged without a purchase', async (
   assert.equal(env.DB.purchases.size, 0);
 });
 
-test('activate rejects an email with no purchase', async () => {
-  const env = makeEnv();
-  const response = await handleActivate(activateRequest({ email: 'stranger@example.com' }), env);
-  const body = await response.json();
-
-  assert.equal(response.status, 404);
-  assert.equal(body.error, 'no_purchase');
-});
-
-test('activate rejects an invalid email', async () => {
-  const env = makeEnv();
-  const response = await handleActivate(activateRequest({ email: 'nope' }), env);
-
-  assert.equal(response.status, 400);
-});
-
-test('activate claims a purchase once and returns a verifiable token', async () => {
+test('webhook mints exactly one license key per purchase', async () => {
   const env = makeEnv();
   await handleKoFiWebhook(webhookRequest(SHOP_ORDER), env);
+  await handleKoFiWebhook(webhookRequest(SHOP_ORDER), env);
 
-  const response = await handleActivate(
-    activateRequest({ email: 'Buyer@Example.com', orderId: '#txn-abc' }),
+  assert.equal(env.DB.purchases.size, 1, 'a duplicate delivery must not mint a second key');
+  assert.match([...env.DB.purchases.values()][0].license_key, /^WASSUP(-[A-Z2-9]{4}){4}$/);
+});
+
+test('claim returns the license key for a matching email and order id', async () => {
+  const env = makeEnv();
+  await handleKoFiWebhook(webhookRequest(SHOP_ORDER), env);
+  const stored = [...env.DB.purchases.values()][0].license_key;
+
+  const response = await handleClaim(
+    claimRequest({ email: ' Buyer@Example.com ', orderId: '#txn-abc' }),
     env
   );
   const body = await response.json();
 
   assert.equal(response.status, 200);
   assert.equal(body.ok, true);
-  assert.ok(body.expiresAt > Date.now());
-
-  const verified = await verifyLicenseToken(body.token, publicJwk);
-  assert.equal(verified.valid, true);
-
-  const row = [...env.DB.purchases.values()][0];
-  assert.equal(row.activation_id === null, false);
-
-  const again = await handleActivate(activateRequest({ email: VALID_EMAIL }), env);
-  assert.equal(again.status, 404, 'a claimed purchase must not activate a second time');
+  assert.equal(body.key, stored);
 });
 
-test('activate matches on email alone when no order id is supplied', async () => {
+test('claim matches on email alone when no order id is supplied', async () => {
   const env = makeEnv();
   await handleKoFiWebhook(webhookRequest(SHOP_ORDER), env);
 
-  const response = await handleActivate(activateRequest({ email: VALID_EMAIL }), env);
+  const response = await handleClaim(claimRequest({ email: VALID_EMAIL }), env);
   assert.equal(response.status, 200);
+  assert.match((await response.json()).key, /^WASSUP-/);
 });
 
-test('activate refuses an order id that belongs to a different email', async () => {
+test('claim rejects an email with no purchase', async () => {
+  const env = makeEnv();
+  const response = await handleClaim(claimRequest({ email: 'stranger@example.com' }), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 404);
+  assert.equal(body.error, 'no_purchase');
+  assert.equal(body.key, undefined);
+});
+
+test('claim rejects an invalid, absent or mistyped email', async () => {
+  const env = makeEnv();
+  for (const email of ['nope', '', undefined, null, 12345, {}]) {
+    const response = await handleClaim(claimRequest({ email }), env);
+    assert.equal(response.status, 400, `email ${JSON.stringify(email)} should be rejected`);
+  }
+});
+
+test('claim refuses an order id that belongs to a different email', async () => {
   const env = makeEnv();
   await handleKoFiWebhook(webhookRequest(SHOP_ORDER), env);
 
-  const response = await handleActivate(
-    activateRequest({ email: 'attacker@example.com', orderId: 'txn-abc' }),
+  const response = await handleClaim(
+    claimRequest({ email: 'attacker@example.com', orderId: 'txn-abc' }),
     env
   );
   assert.equal(response.status, 404);
+  assert.equal((await response.json()).key, undefined);
+});
+
+test('claim returns the same key after the purchase is activated', async () => {
+  const env = makeEnv();
+  await handleKoFiWebhook(webhookRequest(SHOP_ORDER), env);
+  const key = [...env.DB.purchases.values()][0].license_key;
+
+  await handleActivate(activateRequest({ key }), env);
+
+  const response = await handleClaim(claimRequest({ email: VALID_EMAIL }), env);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).key, key, 'a buyer must be able to re-read a lost key');
+});
+
+test('activate rejects a missing, blank or non-string key', async () => {
+  const env = makeEnv();
+  const bodies = [{}, { key: undefined }, { key: null }, { key: '' }, { key: '   ' }, { key: 123 }, { key: {} }, { key: [] }, { key: true }];
+
+  for (const body of bodies) {
+    const response = await handleActivate(activateRequest(body), env);
+    assert.equal(response.status, 400, `key ${JSON.stringify(body.key)} should be rejected`);
+  }
+
+  assert.equal(env.DB.purchases.size, 0);
+});
+
+test('activate rejects a key that matches no purchase', async () => {
+  const env = makeEnv();
+  await handleKoFiWebhook(webhookRequest(SHOP_ORDER), env);
+
+  const response = await handleActivate(activateRequest({ key: 'WASSUP-AAAA-BBBB-CCCC-DDDD' }), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 404);
+  assert.equal(body.error, 'invalid_key');
+  assert.equal(body.token, undefined);
+  assert.equal([...env.DB.purchases.values()][0].activation_id, null);
+});
+
+test('activate claims a key once and returns a verifiable token', async () => {
+  const env = makeEnv();
+  await handleKoFiWebhook(webhookRequest(SHOP_ORDER), env);
+  const key = [...env.DB.purchases.values()][0].license_key;
+
+  const response = await handleActivate(activateRequest({ key: key.toLowerCase() }), env);
+  const body = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.equal(body.ok, true);
+  assert.ok(body.expiresAt > Date.now());
+  assert.equal((await verifyLicenseToken(body.token, publicJwk)).valid, true);
+
+  const row = [...env.DB.purchases.values()][0];
+  assert.notEqual(row.activation_id, null);
+  assert.equal(row.expires_at, body.expiresAt, 'the 30 days start at first activation');
+
+  const again = await handleActivate(activateRequest({ key }), env);
+  assert.equal(again.status, 409, 'a claimed key must not activate a second time');
+  assert.equal((await again.json()).token, undefined);
 });
 
 test('activate is rate limited per IP', async () => {
@@ -354,7 +428,7 @@ test('activate is rate limited per IP', async () => {
 
   let lastStatus = 0;
   for (let i = 0; i < 12; i += 1) {
-    const response = await handleActivate(activateRequest({ email: 'nobody@example.com' }), env);
+    const response = await handleActivate(activateRequest({ key: 'WASSUP-AAAA-BBBB-CCCC-DDDD' }), env);
     lastStatus = response.status;
   }
   assert.equal(lastStatus, 429);

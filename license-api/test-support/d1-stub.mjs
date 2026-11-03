@@ -18,13 +18,14 @@ export function createD1Stub() {
           return {
             async run() {
               if (statement.startsWith('INSERT INTO purchases')) {
-                const [messageId, orderId, emailHash, itemName, amount, currency, purchasedAt] = args;
-                const existed = purchases.has(messageId);
-                if (!existed) {
+                const [messageId, orderId, emailHash, licenseKey, itemName, amount, currency, purchasedAt] = args;
+                const existed = [...purchases.values()].some((row) => row.license_key === licenseKey);
+                if (!existed && !purchases.has(messageId)) {
                   purchases.set(messageId, {
                     kofi_message_id: messageId,
                     order_id: orderId,
                     email_hash: emailHash,
+                    license_key: licenseKey,
                     item_name: itemName,
                     amount,
                     currency,
@@ -59,10 +60,14 @@ export function createD1Stub() {
             },
 
             async first() {
+              if (statement.includes('WHERE license_key = ?')) {
+                return [...purchases.values()].find((row) => row.license_key === args[0]) ?? null;
+              }
+
               if (statement.startsWith('SELECT * FROM purchases')) {
                 const [emailHash, first, second] = args;
                 const candidates = [...purchases.values()]
-                  .filter((row) => row.email_hash === emailHash && !row.activation_id)
+                  .filter((row) => row.email_hash === emailHash)
                   .filter((row) => (args.length === 3 ? row.order_id === first || row.kofi_message_id === second : true))
                   .sort((a, b) => a.purchased_at - b.purchased_at);
                 return candidates[0] ?? null;

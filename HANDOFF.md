@@ -47,16 +47,21 @@ features were added (see section 5 for what is still open).
 | Piece | Location | Notes |
 | --- | --- | --- |
 | Web app | `src/` + root config | React 18, Vite 7, Tailwind, shadcn/ui, PWA. Static deploy (`render.yaml`). |
-| Shared logic | `src/lib/` | decoder, gemini, models, rate limit, idiom helper, types. Canonical. |
+| Shared logic | `src/lib/` | decoder, translation (on-device engine), gemini, models, rate limit, idiom helper, types. Canonical. |
 | Extension | `wassup-extension/` (gitignored) | MV3 + crxjs. Local only; see section 4. |
 | License API | `license-api/` | Cloudflare Worker, D1, `node --test` suite. |
 | Frozen snapshot | `extension-baseline/` | Pre-fix extension source, not built. |
 
 Decode flow: `decodeMessage(text, targetLang, geminiKey?, customDict?)` applies the
 dictionary, tries Gemini when a key exists and the rate limit allows, otherwise runs
-the free path (language detection, idiom disambiguation, MyMemory translation, tone
-and vibe heuristics, template replies). Safety scanning runs on the original and the
-translation, independent of which path produced it.
+the free path (on-device language detection, idiom disambiguation, on-device
+translation with a dictionary fallback, tone and vibe heuristics, template replies).
+Every result names the engine that produced it. Safety scanning runs on the original
+and the translation, independent of which path produced it.
+
+`src/lib/translation.ts` owns the browser Translator and LanguageDetector APIs: it
+caches one translator per language pair, chunks long messages, and returns typed
+failures (`unsupported`, `needs-activation`) so the decoder falls back deliberately.
 
 All user state is client-side. The web app uses `wassup_history`,
 `wassup_preferred_lang`, `wassup_custom_dict`, `wassup-theme`,
@@ -131,9 +136,10 @@ Consequences to keep in mind:
    no backend, no accounts, and history is per-device.
 5. **Ko-fi only notifies on payment.** Refunds and chargebacks are not observed, so a
    refunded pass stays valid until it expires.
-6. **The free decoder is still best-effort.** MyMemory has no SLA and the fallback
-   dictionary is tiny; the safety scanner is regex-based and only aims at illegal
-   content, not general moderation.
+6. **The free decoder is still best-effort.** On-device translation needs Chrome or
+   Edge 138+ and a one-time model download per language pair; everywhere else the
+   fallback dictionary is tiny. The safety scanner is regex-based and only aims at
+   illegal content, not general moderation.
 
 ---
 
@@ -142,12 +148,14 @@ Consequences to keep in mind:
 - `npx tsc --noEmit` in the root and in `wassup-extension/`.
 - `npm run build` in the root; the extension build with its sync prebuild.
 - `node scripts/sync-extension-lib.mjs` run twice, no diff on the second run.
-- `cd license-api && npm test` - 24 tests covering token signing/verification
+- `cd license-api && npm test` - 29 tests covering token signing/verification
   (tampering, expiry, wrong key, malformed), webhook authentication and every
   rejection path (unset secret, absent or malformed bodies, non-string tokens,
-  missing order fields), proof that a rejected webhook cannot be activated,
-  idempotency, activation claiming, order-id ownership, and rate limiting.
-- Manual web-app smoke test of a decode with and without a Personal Dictionary entry.
+  missing order fields), key minting, claim lookup (email alone, order id, foreign
+  email), proof that a rejected webhook cannot be claimed or activated, activation
+  of a key (missing, unknown, already used), and rate limiting.
+- Manual web-app smoke test of a decode with and without a Personal Dictionary entry,
+  plus a browser check that an unsupported engine shows the word-lookup notice.
 
 ---
 

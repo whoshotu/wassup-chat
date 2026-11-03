@@ -23,6 +23,7 @@ const SHARED_LIB_FILES = [
   'geminiRateLimit.ts',
   'idiomHelper.ts',
   'models.ts',
+  'translation.ts',
   'types.ts',
 ];
 

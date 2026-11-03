@@ -1,10 +1,11 @@
 /**
  * Wassup license worker.
- * Routes: POST /kofi-webhook, POST /activate, POST /verify, GET /health.
+ * Routes: POST /kofi-webhook, POST /claim, POST /activate, POST /verify, GET /health.
  */
 
 import {
   handleActivate,
+  handleClaim,
   handleKoFiWebhook,
   handleVerify,
   json,
@@ -28,6 +29,8 @@ export default {
     switch (url.pathname) {
       case '/kofi-webhook':
         return handleKoFiWebhook(request, env);
+      case '/claim':
+        return handleClaim(request, env);
       case '/activate':
         return handleActivate(request, env);
       case '/verify':

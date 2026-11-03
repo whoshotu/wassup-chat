@@ -26,6 +26,9 @@ export interface GeminiAnalysis {
   vibeScore: number;
 }
 
+/** Which translator produced `translatedText`. `none` means the text needed no translation. */
+export type TranslationEngine = 'on-device' | 'gemini' | 'dictionary' | 'none';
+
 export interface DecodeResult {
   originalText: string;
   translatedText: string;
@@ -44,6 +47,9 @@ export interface DecodeResult {
   disambiguationNote?: string;
   /** Summary of Personal Dictionary entries applied before decoding. */
   dictionaryNote?: string;
+  translationEngine?: TranslationEngine;
+  /** Set when the translation is weaker than on-device or Gemini output. */
+  translationNotice?: string;
 }
 
 /** A user-defined slang entry: word -> meaning. */

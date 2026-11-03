@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS purchases (
   kofi_message_id TEXT PRIMARY KEY,
   order_id TEXT,
   email_hash TEXT NOT NULL,
+  license_key TEXT,
   item_name TEXT,
   amount REAL,
   currency TEXT,
@@ -15,6 +16,7 @@ CREATE TABLE IF NOT EXISTS purchases (
 );
 
 CREATE INDEX IF NOT EXISTS idx_purchases_email ON purchases (email_hash);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_purchases_key ON purchases (license_key);
 
 -- Fixed-window counters for abuse control on /activate.
 CREATE TABLE IF NOT EXISTS rate_limits (

@@ -7,7 +7,8 @@
 import { analyzeWithGemini, paraphraseWithGemini } from './gemini';
 import { canUseGemini, canDisambiguate, recordUsage } from './geminiRateLimit';
 import { detectAmbiguity, applyLocalDisambiguation } from './idiomHelper';
-import type { CustomDictionary, DecodeResult } from './types';
+import { detectOnDevice, nativeEngineSupported, translateOnDevice } from './translation';
+import type { CustomDictionary, DecodeResult, TranslationEngine } from './types';
 
 export type { DecodeResult } from './types';
 
@@ -220,56 +221,58 @@ const DICT: Record<string, Record<string, string>> = {
   },
 };
 
-export async function translateText(text: string, from: string, to: string): Promise<string> {
-  if (!text || from === to) return text;
-
-  // Pre-process internet slang
-  let preProcessedText = text;
+/** Rewrite the internet slang we know into English before any engine sees it. */
+function preprocessInternetSlang(text: string): string {
+  let result = text;
   for (const [en, local] of Object.entries(DICT['Internet'])) {
-    const regex = new RegExp(`\\b${local.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-    preProcessedText = preProcessedText.replace(regex, en);
+    result = result.replace(new RegExp(`\\b${escapeRegExp(local)}\\b`, 'gi'), en);
   }
+  return result;
+}
 
-  try {
-    const langCodes: Record<string, string> = {
-      'Auto-detect': 'auto', 'English': 'en', 'Spanish': 'es', 'French': 'fr',
-      'German': 'de', 'Portuguese': 'pt', 'Italian': 'it', 'Japanese': 'ja',
-      'Korean': 'ko', 'Chinese': 'zh', 'Arabic': 'ar', 'Russian': 'ru',
-      'Hindi': 'hi', 'Indonesian': 'id', 'Vietnamese': 'vi', 'Thai': 'th',
-      'Turkish': 'tr', 'Polish': 'pl', 'Dutch': 'nl', 'Swedish': 'sv',
-      'Ukrainian': 'uk', 'Romanian': 'ro', 'Greek': 'el', 'Hebrew': 'he',
-    };
-
-    const sourceCode = from === 'Auto-detect' ? 'auto' : (langCodes[from] || 'auto');
-    const targetCode = langCodes[to] || 'en';
-
-    // MyMemory API — free, no key required, 5000 words/day per IP
-    const url = `https://api.mymemory.translated.net/get?q=${encodeURIComponent(preProcessedText)}&langpair=${sourceCode}|${targetCode}`;
-    const response = await fetch(url, { signal: AbortSignal.timeout(6000) });
-    if (!response.ok) throw new Error('MyMemory request failed');
-
-    const json = await response.json();
-    if (json?.responseStatus === 200 && json?.responseData?.translatedText) {
-      const result = json.responseData.translatedText;
-      if (result.toUpperCase().includes('PLEASE SELECT')) return preProcessedText;
-      return result;
+/** Last resort: swap the words we happen to know and leave the rest untouched. */
+function translateWithDictionary(text: string, from: string, to: string): string {
+  let translated = text;
+  for (const dict of [DICT[from], DICT[to]]) {
+    if (!dict) continue;
+    for (const [en, local] of Object.entries(dict)) {
+      const wordToFind = to === 'English' ? local : en;
+      const replacement = to === 'English' ? en : local;
+      translated = translated.replace(
+        new RegExp(`\\b${escapeRegExp(wordToFind)}\\b`, 'gi'),
+        replacement
+      );
     }
-    throw new Error('MyMemory returned no translation');
-  } catch (error) {
-    console.error('Translation API failed, falling back to dictionary:', error);
-
-    const dicts = [DICT[from], DICT[to]].filter(Boolean);
-    let translated = preProcessedText;
-    for (const dict of dicts) {
-      for (const [en, local] of Object.entries(dict!)) {
-        const wordToFind = to === 'English' ? local : en;
-        const replacement = to === 'English' ? en : local;
-        const re = new RegExp(`\\b${wordToFind.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
-        translated = translated.replace(re, replacement);
-      }
-    }
-    return translated;
   }
+  return translated;
+}
+
+async function translateWithEngine(
+  text: string,
+  from: string,
+  to: string
+): Promise<{ text: string; engine: TranslationEngine }> {
+  if (!text || from === to) return { text, engine: 'none' };
+
+  const prepared = preprocessInternetSlang(text);
+  const onDevice = await translateOnDevice(prepared, from, to);
+  if (onDevice.ok) return { text: onDevice.text, engine: 'on-device' };
+
+  return { text: translateWithDictionary(prepared, from, to), engine: 'dictionary' };
+}
+
+export async function translateText(text: string, from: string, to: string): Promise<string> {
+  return (await translateWithEngine(text, from, to)).text;
+}
+
+/** Explain a weaker translation engine in the decode result. */
+function describeEngine(engine: TranslationEngine, from: string, to: string): string {
+  if (engine !== 'dictionary') return '';
+  if (!nativeEngineSupported()) {
+    return 'Approximate word lookup: on-device translation needs Chrome or Edge 138+.';
+  }
+  const pair = from === 'Auto-detect' ? 'this language pair' : `${from} → ${to}`;
+  return `Approximate word lookup: the on-device model for ${pair} is not ready yet.`;
 }
 
 export function computeVibeScore(text: string, tones: string[]) {
@@ -400,6 +403,7 @@ export async function decodeMessage(
           disambiguated: false,
           disambiguationNote: '',
           dictionaryNote,
+          translationEngine: 'gemini',
         };
       } catch (err) {
         console.warn('Gemini failed, falling back to free decoder:', err);
@@ -408,8 +412,10 @@ export async function decodeMessage(
     }
   }
 
-  let sourceLanguage = detectLanguage(text);
-  if (sourceLanguage === "English") {
+  // The on-device detector is trained on real text; the keyword heuristic is the fallback.
+  const detectedOnDevice = await detectOnDevice(text);
+  let sourceLanguage = detectedOnDevice ?? detectLanguage(text);
+  if (!detectedOnDevice && sourceLanguage === "English") {
     const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 2);
     const englishWords = ['the', 'and', 'you', 'are', 'for', 'that', 'with', 'this', 'have', 'from', 'they', 'been', 'will', 'would', 'there', 'their', 'what', 'about', 'which', 'when', 'make', 'like', 'just', 'over', 'such', 'take', 'than', 'them', 'some', 'could', 'other', 'more', 'very', 'also', 'after', 'well', 'only', 'into', 'year', 'your', 'good', 'know', 'want', 'dont', "don't", 'think', 'really', 'should'];
     const englishCount = words.filter(w => englishWords.includes(w)).length;
@@ -445,7 +451,8 @@ export async function decodeMessage(
     }
   }
 
-  const translatedText = await translateText(text, sourceLanguage, targetLanguage);
+  const translation = await translateWithEngine(text, sourceLanguage, targetLanguage);
+  const translatedText = translation.text;
   const toneTags = detectTones(text);
   const vibeScore = computeVibeScore(text, toneTags);
 
@@ -494,6 +501,8 @@ export async function decodeMessage(
     disambiguated,
     disambiguationNote,
     dictionaryNote,
+    translationEngine: translation.engine,
+    translationNotice: describeEngine(translation.engine, sourceLanguage, targetLanguage),
   };
 }
 

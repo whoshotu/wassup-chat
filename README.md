@@ -18,7 +18,7 @@ A mobile-first web app that instantly translates and explains international view
 
 ## Gemini AI (Optional)
 
-The decoder works fully without any API key using the free MyMemory translation API. For enhanced analysis, users can optionally provide their own Gemini API key:
+The decoder works without any API key: translation uses the browser's built-in on-device Translator API (Chrome and Edge 138+), with an approximate word lookup when that engine or the language model is unavailable. For enhanced analysis, users can optionally provide their own Gemini API key:
 
 - **Enhanced Tone Analysis**: Context-aware, nuanced tone detection
 - **Slang Breakdown**: AI explains cultural context and meaning of slang
@@ -68,7 +68,7 @@ All detection runs client-side. Adult/NSFW content is allowed (this app is for c
 - **Routing**: React Router v6
 - **State Management**: React Context API
 - **Storage**: LocalStorage for user data, message history, and API keys
-- **Translation**: MyMemory API (free, no key) + Gemini AI (optional)
+- **Translation**: on-device Translator API (no key, no network) with a local word-lookup fallback + Gemini AI (optional)
 - **Pro licensing**: Cloudflare Worker + D1 (see `license-api/`)
 - **PWA**: vite-plugin-pwa with Workbox
 
@@ -156,8 +156,9 @@ The extension's `predev` and `prebuild` scripts run the sync automatically, and 
 
 The extension's 30-day Pro pass is verified by a server, not by local storage:
 
-- `license-api/` is a Cloudflare Worker (free plan) that receives Ko-fi webhooks, stores a hash of the buyer's email and order id, and issues a 30-day ES256-signed token when the extension activates.
-- The extension verifies that token against an embedded public key, so expiry cannot be extended by editing `chrome.storage`, and each purchase can be activated once.
+- `license-api/` is a Cloudflare Worker (free plan) that receives Ko-fi webhooks, stores a hash of the buyer's email and order id plus a license key minted for that purchase, and issues a 30-day ES256-signed token the first time the extension activates the key.
+- Buyers read their key on `/claim` with the email and order id from their Ko-fi receipt. The 30 days start at that first activation, and a key can be activated once.
+- The extension verifies that token against an embedded public key, so expiry cannot be extended by editing `chrome.storage`.
 - Deploy steps and the Ko-fi webhook setup are in [license-api/README.md](license-api/README.md).
 
 This stops free activation, date tampering, and order-id reuse. It does not stop someone from unpacking and patching the extension bundle, which is inherent to locally installed code.

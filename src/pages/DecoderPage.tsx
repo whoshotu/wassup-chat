@@ -33,6 +33,7 @@ import { getUsage, resetUsage } from '@/lib/geminiRateLimit'
 import type { DecodeResult as BaseDecodeResult, GeminiUsageStats } from '@/types'
 import { usePersonalDictionary } from '@/hooks/usePersonalDictionary'
 import { PersonalDictionaryCard } from '@/components/PersonalDictionaryCard'
+import { TranslationEngineBadge } from '@/components/TranslationEngineBadge'
 
 // UI-level decode record: the shared decode result plus what history needs.
 type DecodeResult = BaseDecodeResult & {
@@ -241,12 +242,6 @@ export function DecoderPage() {
                       {result.sourceLanguage}
                     </Badge>
                     <CardTitle className="text-sm font-medium text-slate-400">Translation & Analysis</CardTitle>
-                    {result.usedGemini && (
-                      <Badge className="bg-purple-500/20 text-purple-400 border-purple-500/30 text-[10px] font-bold px-1.5 h-4">
-                        <Sparkles className="w-2.5 h-2.5 mr-1" />
-                        Gemini
-                      </Badge>
-                    )}
                   </div>
                   <div className="flex gap-0.5">
                     {[1, 2, 3, 4, 5].map((s) => (
@@ -299,6 +294,9 @@ export function DecoderPage() {
                     <p className="text-2xl font-semibold text-white leading-tight">
                       {result.translatedText}
                     </p>
+                    <div className="pt-1.5">
+                      <TranslationEngineBadge result={result} />
+                    </div>
                     <div className="pt-2">
                       <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600 block mb-1">Original Message</span>
                       <p className="text-sm text-slate-500 italic">

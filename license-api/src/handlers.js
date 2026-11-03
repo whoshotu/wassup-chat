@@ -2,28 +2,32 @@
  * Request handlers for the Wassup license worker.
  *
  * Flow:
- *   Ko-fi sale  -> POST /kofi-webhook -> purchases row (email hash, order id)
- *   Extension   -> POST /activate      -> claim the row, return a signed token
- *   Extension   -> POST /verify        -> confirm a token is still valid
+ *   Ko-fi sale  -> POST /kofi-webhook -> purchases row (email hash, order id, license key)
+ *   Buyer       -> POST /claim        -> read the license key for their own purchase
+ *   Extension   -> POST /activate     -> claim the key once, return a signed token
+ *   Extension   -> POST /verify       -> confirm a token is still valid
  *
- * The extension never sees a stored list of order ids; it only holds a token it
- * cannot forge or extend.
+ * The extension never sees a stored list of order ids; it only holds a key and a
+ * token it cannot forge or extend.
  */
 
 import {
   claimPurchase,
   consumeRateLimit,
-  findActivatablePurchase,
+  findPurchaseByEmail,
+  findPurchaseByKey,
+  generateLicenseKey,
   isValidEmail,
   normalizeEmail,
+  normalizeLicenseKey,
   recordPurchase,
   sha256Hex,
   timingSafeEqual,
 } from './store.js';
 import { signLicenseToken, TOKEN_TTL_MS, verifyLicenseToken } from './token.js';
 
-const ACTIVATION_WINDOW_MS = 10 * 60 * 1000;
-const ACTIVATION_LIMIT = 10;
+const RATE_WINDOW_MS = 10 * 60 * 1000;
+const RATE_LIMIT = 10;
 
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
@@ -71,6 +75,17 @@ export async function readKoFiPayload(request) {
 
 const PAID_TYPES = new Set(['Shop Order', 'Commission']);
 
+/** Shared fixed-window limit for the endpoints that touch purchases. */
+async function withinRateLimit(db, request, action) {
+  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
+  return consumeRateLimit(
+    db,
+    `${action}:${await sha256Hex(ip)}`,
+    Math.floor(Date.now() / RATE_WINDOW_MS),
+    RATE_LIMIT
+  );
+}
+
 /** First value that is a non-empty string. Numbers, objects and blanks are ignored. */
 function firstNonEmptyString(...values) {
   for (const value of values) {
@@ -115,6 +130,7 @@ export async function handleKoFiWebhook(request, env) {
     messageId,
     orderId: normalizeOrderId(payload.kofi_transaction_id || messageId),
     emailHash: await sha256Hex(email),
+    licenseKey: generateLicenseKey(),
     itemName: payload.shop_items?.[0]?.direct_link_code || null,
     amount: Number(payload.amount) || null,
     currency: payload.currency || null,
@@ -122,6 +138,48 @@ export async function handleKoFiWebhook(request, env) {
   });
 
   return json({ ok: true });
+}
+
+/**
+ * Give the buyer the key for a purchase they can prove they made. The key is
+ * returned even after activation so a lost key can be looked up again.
+ */
+export async function handleClaim(request, env) {
+  let body;
+  try {
+    body = await request.json();
+  } catch {
+    return json({ ok: false, error: 'bad_payload' }, 400);
+  }
+
+  const email = normalizeEmail(body?.email);
+  if (!isValidEmail(email)) {
+    return json({ ok: false, error: 'invalid_email' }, 400);
+  }
+
+  if (!(await withinRateLimit(env.DB, request, 'claim'))) {
+    return json({ ok: false, error: 'rate_limited' }, 429);
+  }
+
+  const purchase = await findPurchaseByEmail(
+    env.DB,
+    await sha256Hex(email),
+    normalizeOrderId(body?.orderId) || null
+  );
+
+  if (!purchase?.license_key) {
+    return json(
+      {
+        ok: false,
+        error: 'no_purchase',
+        message:
+          'No purchase was found for that email and order id. Check the details in your Ko-fi receipt.',
+      },
+      404
+    );
+  }
+
+  return json({ ok: true, key: purchase.license_key });
 }
 
 export async function handleActivate(request, env) {
@@ -132,33 +190,24 @@ export async function handleActivate(request, env) {
     return json({ ok: false, error: 'bad_payload' }, 400);
   }
 
-  const email = normalizeEmail(body?.email);
-  const orderId = normalizeOrderId(body?.orderId);
-
-  if (!isValidEmail(email)) {
-    return json({ ok: false, error: 'invalid_email' }, 400);
+  const key = normalizeLicenseKey(body?.key);
+  if (!key) {
+    return json({ ok: false, error: 'missing_key' }, 400);
   }
 
-  const ip = request.headers.get('cf-connecting-ip') || 'unknown';
-  const windowStart = Math.floor(Date.now() / ACTIVATION_WINDOW_MS);
-  const withinLimit = await consumeRateLimit(
-    env.DB,
-    `activate:${await sha256Hex(ip)}`,
-    windowStart,
-    ACTIVATION_LIMIT
-  );
-  if (!withinLimit) return json({ ok: false, error: 'rate_limited' }, 429);
+  if (!(await withinRateLimit(env.DB, request, 'activate'))) {
+    return json({ ok: false, error: 'rate_limited' }, 429);
+  }
 
-  const emailHash = await sha256Hex(email);
-  const purchase = await findActivatablePurchase(env.DB, emailHash, orderId || null);
+  const purchase = await findPurchaseByKey(env.DB, key);
 
   if (!purchase) {
     return json(
       {
         ok: false,
-        error: 'no_purchase',
+        error: 'invalid_key',
         message:
-          'No unused purchase was found for that email. Check the email you used at checkout, or contact support.',
+          'That license key is not valid. Re-check the key from your Ko-fi purchase, or claim it again with the email you used at checkout.',
       },
       404
     );
@@ -177,7 +226,7 @@ export async function handleActivate(request, env) {
   );
   if (!claimed) {
     return json(
-      { ok: false, error: 'already_activated', message: 'That purchase is already in use on another device.' },
+      { ok: false, error: 'already_activated', message: 'That license key is already active on another device.' },
       409
     );
   }
